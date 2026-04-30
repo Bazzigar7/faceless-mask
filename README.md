@@ -46,7 +46,7 @@ The best teacher anyone remembers from school is the one who told funny stories 
 | Database | Supabase | Already paid for, already integrated |
 | LLM | Claude Sonnet 4.6 (`claude-sonnet-4-6`) | Best speed-quality tradeoff for voice |
 | Speech-to-text | OpenAI Whisper (`whisper-1`) | Multilingual incl. Tamil/Hindi code-mix; swapped from Deepgram during Phase 1 build (see note below) |
-| Text-to-speech | ElevenLabs Turbo v2.5 | Custom voice, low latency |
+| Text-to-speech | ElevenLabs Multilingual v2 | Free-tier compatible; move to Turbo v2.5 once on Starter plan (the under-2s latency budget assumes Turbo) |
 | Wake word | Picovoice Porcupine | Free for personal use, runs in browser |
 | Animation | Framer Motion + SVG | Mask image with separated lip layer |
 | Hosting | Vercel | Free tier, same workflow as faceless-hub |

@@ -33,7 +33,8 @@ export async function POST(req: NextRequest) {
       },
       body: JSON.stringify({
         text,
-        model_id: "eleven_turbo_v2_5",
+        // Free tier doesn't allow turbo v2.5. Switch back to eleven_turbo_v2_5 once on Starter plan ($5/mo) for lower latency.
+        model_id: "eleven_multilingual_v2",
       }),
     },
   );
