@@ -45,11 +45,13 @@ The best teacher anyone remembers from school is the one who told funny stories 
 | Frontend | Next.js 14 + Tailwind | Same as faceless-hub, code reuse |
 | Database | Supabase | Already paid for, already integrated |
 | LLM | Claude Sonnet 4.6 (`claude-sonnet-4-6`) | Best speed-quality tradeoff for voice |
-| Speech-to-text | Deepgram Nova-2 | Real-time, handles Indian English well |
+| Speech-to-text | OpenAI Whisper (`whisper-1`) | Multilingual incl. Tamil/Hindi code-mix; swapped from Deepgram during Phase 1 build (see note below) |
 | Text-to-speech | ElevenLabs Turbo v2.5 | Custom voice, low latency |
 | Wake word | Picovoice Porcupine | Free for personal use, runs in browser |
 | Animation | Framer Motion + SVG | Mask image with separated lip layer |
 | Hosting | Vercel | Free tier, same workflow as faceless-hub |
+
+> **Note (STT pivot):** Originally specced as Deepgram Nova-2; swapped to OpenAI Whisper during Phase 1 because Deepgram login was broken on Baz's account. Reversible — the API contract on `/api/stt` is identical, swapping back is a route-handler change only.
 
 ---
 
