@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8" standalone="no"?>
+<!-- Eye cutout shapes (always punched out) -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400" width="400" height="400">
+  <g transform="translate(-4, -4)">
+    <g transform="translate(0.000000,408.000000) scale(0.100000,-0.100000)" fill="#000000" fill-rule="evenodd">
+      <path d="M1752 2719 c-237 -40 -319 -248 -86 -218 64 8 149 10 247 5 169 -7
+187 -2 187 59 0 106 -173 183 -348 154z"/>
+      <path d="M2546 2715 c-11 -8 -31 -14 -45 -13 -38 2 -103 -36 -140 -82 l-31
+-39 23 -48 22 -48 50 1 c28 1 84 3 125 4 41 1 88 -3 103 -9 16 -6 49 -11 75
+-11 26 0 54 -5 62 -10 11 -7 22 -2 42 17 65 62 -74 233 -191 233 -22 0 -43 5
+-46 10 -9 14 -27 12 -49 -5z"/>
+    </g>
+  </g>
+</svg>

@@ -42,24 +42,30 @@ The best teacher anyone remembers from school is the one who told funny stories 
 
 | Layer | Tool | Why |
 |---|---|---|
-| Frontend | Next.js 14 + Tailwind | Same as faceless-hub, code reuse |
+| Frontend | Next.js 14 + Tailwind + TypeScript | Same as faceless-hub, code reuse |
 | Database | Supabase | Already paid for, already integrated |
-| LLM | Claude Sonnet 4.6 (`claude-sonnet-4-6`) | Best speed-quality tradeoff for voice |
-| Speech-to-text | OpenAI Whisper (`whisper-1`) | Multilingual incl. Tamil/Hindi code-mix; swapped from Deepgram during Phase 1 build (see note below) |
-| Text-to-speech | ElevenLabs Multilingual v2 | Free-tier compatible; move to Turbo v2.5 once on Starter plan (the under-2s latency budget assumes Turbo) |
-| Wake word | Picovoice Porcupine | Free for personal use, runs in browser |
-| Animation | Framer Motion + SVG | Mask image with separated lip layer |
+| LLM | Claude Sonnet 4.6 (`claude-sonnet-4-6`) | Best speed-quality tradeoff for voice. Prompt caching enabled from day 1. |
+| Speech-to-text | OpenAI Whisper (`whisper-1`) | Auto-detects code-mix English/Tamil/Hindi. Pivoted from Deepgram in Phase 1 (see Known reversals). |
+| Text-to-speech | ElevenLabs Multilingual v2 | Free-tier compatible. Will swap to Turbo v2.5 on Starter ($5/mo) for ~500-800ms latency win. |
+| Wake word | Picovoice Porcupine | Free for personal use, runs in browser. Phase 3. |
+| Animation | Framer Motion + SVG | Mask image with separated lip layer. Phase 2. |
 | Hosting | Vercel | Free tier, same workflow as faceless-hub |
 
-> **Note (STT pivot):** Originally specced as Deepgram Nova-2; swapped to OpenAI Whisper during Phase 1 because Deepgram login was broken on Baz's account. Reversible — the API contract on `/api/stt` is identical, swapping back is a route-handler change only.
+### Known reversals
+
+The stack above reflects what's actually running. Two layers got pivoted during Phase 1 — both are documented here so future sessions know the conditions to flip back.
+
+1. **Deepgram Nova-2 → OpenAI Whisper.** Deepgram login was broken on the `bazaffiliate` account during Phase 1. Whisper handles Indian English and code-mix fine and was a 5-minute swap. Reversal trigger: when streaming STT becomes a priority in Phase 3 (lower latency, partial transcripts for "interruptibility"), revisit Deepgram once auth is resolved. Code path: `app/api/stt/route.ts`.
+
+2. **ElevenLabs Turbo v2.5 → Multilingual v2.** Turbo isn't available on the free tier. Currently free tier is fine for development. Reversal trigger: before recording the public launch clip OR when latency consistently bothers Baz in testing. Upgrade to Starter ($5/mo) and change the model string in `app/api/tts/route.ts`. One-line flip.
 
 ---
 
 ## Locked design decisions
 
 - **Name**: Mask
-- **Repo**: Standalone — `faceless-mask`
-- **Activation**: Wake word "Hey Mask" + push-to-talk button as backup
+- **Repo**: Standalone — `Mask Faceless CoHost` (lives at `/Users/apple/Desktop/Mask Faceless CoHost`)
+- **Activation**: Wake word "Hey Mask" + push-to-talk button as backup. Phase 1 is push-to-talk only.
 - **Voice personality**: Calm, thoughtful, conversational, with Gen-Z energy
 - **Languages**: English, Tamil, Hindi (code-mix)
 - **Visual identity**: Faceless's existing mask image (Baz to provide)
@@ -75,38 +81,49 @@ The best teacher anyone remembers from school is the one who told funny stories 
 
 ## Folder structure
 
+Reflects Phase 1 as shipped. Phase 2+ files are listed but commented as not-yet-built.
+
 ```
-faceless-mask/
+Mask Faceless CoHost/
 ├── app/
-│   ├── page.tsx                 # Stage view — main classroom display
-│   ├── admin/page.tsx           # Pre-session brief + approval panel
-│   ├── library/page.tsx         # Asset library manager
-│   ├── tracks/page.tsx          # Curriculum + cohort manager
+│   ├── page.tsx                 # Push-to-talk UI (Phase 1). Becomes stage view in Phase 3.
+│   ├── layout.tsx
+│   ├── admin/page.tsx           # Pre-session brief + approval panel (Phase 2)
+│   ├── library/page.tsx         # Asset library manager (Phase 3)
+│   ├── tracks/page.tsx          # Curriculum + cohort manager (Phase 2)
 │   └── api/
-│       ├── stt/route.ts         # Deepgram streaming endpoint
-│       ├── chat/route.ts        # Claude API endpoint with system prompt
-│       ├── tts/route.ts         # ElevenLabs streaming endpoint
-│       └── session/route.ts     # Session CRUD + memory
+│       ├── stt/route.ts         # Whisper STT (was Deepgram — see Known reversals)
+│       ├── chat/route.ts        # Claude API endpoint with system prompt + caching
+│       ├── tts/route.ts         # ElevenLabs Multilingual v2 (Turbo v2.5 once on Starter)
+│       └── session/route.ts     # Session CRUD + memory (Phase 2)
 ├── components/
-│   ├── Mask.tsx                 # The animated mask SVG component
-│   ├── Stage.tsx                # Asset rendering area
-│   ├── StageLayout.tsx          # Adaptive layout controller (solo/visual/activity)
-│   ├── ActivityRunner.tsx       # Big-text activity display (Bull/Bear, Speed Round)
-│   ├── Subtitles.tsx            # Live subtitle rendering
-│   ├── Starfield.tsx            # Animated background
-│   ├── VoiceLoop.tsx            # Wake word + STT + TTS orchestration
-│   └── StatusIndicator.tsx      # Listening / thinking / speaking
+│   ├── VoiceLoop.tsx            # Orchestrates STT → chat → TTS (Phase 1)
+│   ├── StatusIndicator.tsx      # idle / listening / thinking / speaking (Phase 1)
+│   ├── Mask.tsx                 # Animated mask SVG (Phase 2)
+│   ├── Stage.tsx                # Asset rendering area (Phase 3)
+│   ├── StageLayout.tsx          # Adaptive layout controller (Phase 3)
+│   ├── ActivityRunner.tsx       # Big-text activity display (Phase 3)
+│   ├── Subtitles.tsx            # Live subtitle rendering (Phase 2)
+│   └── Starfield.tsx            # Animated background (Phase 2)
 ├── lib/
-│   ├── personality.ts           # Mask's system prompt (THE BRAIN)
-│   ├── visualCommands.ts        # Parser for "show", "pull up", "play"
-│   ├── activityCommands.ts      # Parser for "Mask, run Bull Bear" etc.
-│   ├── memory.ts                # Cross-session memory layer
-│   ├── modeStateMachine.ts      # Solo / Visual / Activity transitions
-│   └── supabase.ts              # DB client
+│   ├── personality.ts           # Mask's system prompt — THE BRAIN (Phase 1)
+│   ├── supabase.ts              # DB client (connected, schema not deployed yet)
+│   ├── visualCommands.ts        # Parser for "show", "pull up", "play" (Phase 3)
+│   ├── activityCommands.ts      # Parser for "Mask, run Bull Bear" (Phase 3)
+│   ├── memory.ts                # Cross-session memory layer (Phase 2)
+│   └── modeStateMachine.ts      # Solo / Visual / Activity transitions (Phase 3)
 ├── public/
-│   ├── mask-head.svg            # Just the face (for smaller sizes)
-│   ├── mask-full.svg            # Mask + tuxedo body (for larger sizes)
-│   └── mask-lips.svg            # Lips layer (animated, separate from face)
+│   ├── mask-head.svg            # Just the face — for smaller sizes (Phase 2)
+│   ├── mask-full.svg            # Mask + tuxedo body — for larger sizes (Phase 2)
+│   └── mask-lips.svg            # Lips layer — animated, separate (Phase 2)
+├── docs/
+│   ├── faceless-edtech-strategy.md
+│   ├── faceless-toolkit.md
+│   └── curriculum-ideas.md      # API keys topic captured
+├── prompts/
+│   └── claude-code-phase-1.md   # Used to kick off the build
+├── .env.local                   # gitignored
+├── .env.local.example
 └── README.md                    # This file
 ```
 
@@ -150,7 +167,9 @@ The approved set becomes Mask's session context. Mask doesn't randomly throw in 
 
 ## Voice configuration (ElevenLabs)
 
-We will audition voices in Phase 1. Target profile:
+Current voice in Phase 1 is **Adam (`pNInz6obpgDQGcFmaJgB`)** — placeholder only. Real Mask voice still needs to be auditioned and picked. Audition is a Phase 2 prerequisite — lip sync work is much harder to evaluate against a stand-in voice.
+
+Target profile for the real voice:
 
 - **Pitch**: slightly lower than typical AI assistants
 - **Pace**: moderate, never rushed
@@ -217,30 +236,38 @@ The system picks based on size threshold. Designer needs to provide both version
 ## The voice loop architecture
 
 ```
-[Wake word "Hey Mask"]  ←—— Picovoice in browser
-        ↓
+[Wake word "Hey Mask"]  ←—— Picovoice in browser (Phase 3)
+        ↓                       Phase 1 = push-to-talk button
 [Microphone opens, audio streams]
         ↓
-[Deepgram STT]  ←—— transcribes in real-time
+[Whisper STT]  ←—— transcribes the recording
         ↓
 [Send transcript + session context + memory to Claude API]
         ↓
 [Claude streams response]
         ↓
-[Parse <stage> tags → trigger visual on stage view]
+[Parse <stage> tags → trigger visual on stage view]  (Phase 3)
         ↓
 [Stream remaining text to ElevenLabs TTS]
         ↓
-[Audio plays through speaker, lips animate via amplitude analysis]
+[Audio plays via MediaSource, lips animate via amplitude analysis]  (lips = Phase 2)
         ↓
-[Status returns to "listening", waits for next wake word]
+[Status returns to "listening", waits for next press / wake word]
 ```
 
-**Latency budget**: total round-trip under 2 seconds from end-of-question to start-of-speech. Streaming is critical at every layer.
+**Latency budget**: target is total round-trip under 2 seconds from end-of-question to start-of-speech. Phase 1 lands at ~3 seconds — over budget. The path back inside budget:
+
+1. ElevenLabs Turbo v2.5 on Starter tier (~500-800ms back). One-line flip.
+2. Streaming STT (Deepgram return or Whisper streaming alternative) cuts another chunk.
+3. Aggressive prompt caching for system prompt — already enabled, verified working (`cache_read=4420` on subsequent calls).
+
+The 2s target is non-negotiable for live classroom sessions. Phase 1 demoability is fine at 3s. Phase 5 is not.
 
 ---
 
 ## Database schema
+
+Schema below is designed for Phase 2. Phase 1 has the Supabase client connected but no tables deployed.
 
 ```sql
 -- Colleges
@@ -329,37 +356,48 @@ create table memory (
 ```bash
 # .env.local
 ANTHROPIC_API_KEY=
-DEEPGRAM_API_KEY=
+OPENAI_API_KEY=                  # for Whisper STT
 ELEVENLABS_API_KEY=
-ELEVENLABS_VOICE_ID=
-PICOVOICE_ACCESS_KEY=
+ELEVENLABS_VOICE_ID=             # currently Adam: pNInz6obpgDQGcFmaJgB (placeholder)
 NEXT_PUBLIC_SUPABASE_URL=
 NEXT_PUBLIC_SUPABASE_ANON_KEY=
 SUPABASE_SERVICE_ROLE_KEY=
+
+# Phase 3
+# PICOVOICE_ACCESS_KEY=
+# DEEPGRAM_API_KEY=              # if reverting STT (see Known reversals)
 ```
+
+Account map (which email owns which key) lives in `~/Desktop/mask-accounts.txt`. Keys themselves only live in `.env.local` (gitignored).
 
 ---
 
 ## Build phases (flexible timing — Baz controls the calendar)
 
-### Phase 1 — Voice loop
-- [ ] Repo setup, Vercel deploy, Supabase project
-- [ ] STT → Claude → TTS pipeline working end-to-end
-- [ ] Latency under 2s
-- [ ] First conversation in office
+### Phase 1 — Voice loop  ✅ shipped April 30, 2026
+- [x] Repo setup, Supabase project connected
+- [x] STT → Claude → TTS pipeline working end-to-end
+- [x] Personality file loading on every call with prompt caching verified
+- [x] First conversation in office (Mask responded in character on first test)
+- [ ] Latency under 2s — *currently ~3s. Path to <2s: Turbo v2.5 swap on ElevenLabs Starter, streaming STT in Phase 3*
+- [ ] Vercel deploy — *not deployed yet, local dev only*
+- [ ] Ship clip recorded and posted
 
 ### Phase 2 — Admin + memory + visual
+- [ ] Real Mask voice auditioned and locked (prerequisite — see Voice configuration)
 - [ ] Admin panel with pre-session approval flow
-- [ ] Cohort + Track + Session models
+- [ ] Cohort + Track + Session models (deploy SQL schema)
 - [ ] Mask SVG with amplitude-reactive animation
 - [ ] Lip sync (Level 2 — viseme morphing)
 - [ ] Memory tables + cross-session recall
+- [ ] Subtitles rendering
 
 ### Phase 3 — Stage view + assets + wake word
 - [ ] Asset library with tagging
 - [ ] Visual command parser
 - [ ] Stage view with fade transitions
 - [ ] Picovoice "Hey Mask" wake word
+- [ ] Streaming STT (revisit Deepgram or Whisper streaming)
 - [ ] Quiz generator from transcript
 
 ### Phase 4 — Mock + polish
@@ -390,7 +428,7 @@ Mask's build is content. Each phase ships at least one X post + one short clip.
 ## Non-negotiables
 
 1. **Mask is not a chatbot.** It's a character. Personality > capability.
-2. **Voice latency is sacred.** Anything over 2s breaks the magic. Optimize relentlessly.
+2. **Voice latency is sacred.** Anything over 2s breaks the magic in live sessions. Optimize relentlessly. (Phase 1 lands at 3s — fine for demo, must be fixed before Phase 5.)
 3. **Mask never gives financial advice.** Hard rule. Bybit, Mudrex etc. trust Faceless because we don't shill.
 4. **The build is content.** Don't let a phase ship without a post.
 5. **Faceless's moat is real students.** Mask runs alongside Baz. It does not replace him.
