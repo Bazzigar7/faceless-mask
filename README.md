@@ -113,9 +113,10 @@ Mask Faceless CoHost/
 │   ├── memory.ts                # Cross-session memory layer (Phase 2)
 │   └── modeStateMachine.ts      # Solo / Visual / Activity transitions (Phase 3)
 ├── public/
-│   ├── mask-head.svg            # Just the face — for smaller sizes (Phase 2)
-│   ├── mask-full.svg            # Mask + tuxedo body — for larger sizes (Phase 2)
-│   └── mask-lips.svg            # Lips layer — animated, separate (Phase 2)
+│   ├── mask-base.svg            # Mask + tuxedo body — canonical render, inlined in Mask.tsx (Phase 2a)
+│   ├── mask-eye-holes.svg       # Eye cutout shapes — punched via SVG <mask> (Phase 2a)
+│   ├── mask-head.svg            # Head-only crop — reserved for Mode 2/3 in Phase 3
+│   └── mask-lips.svg            # Six viseme cutout shapes (rest, closed, open-a/e/o/u) (Phase 2a)
 ├── docs/
 │   ├── faceless-edtech-strategy.md
 │   ├── faceless-toolkit.md
@@ -218,11 +219,9 @@ The classroom display is not a single static layout. It adapts to what's happeni
 - Background never changes between modes — only foreground composition shifts
 
 ### Mask asset states
-We need two versions of the mask image:
-- **Mask only** (head/face) — used in Mode 2 and 3 when smaller
-- **Mask + tuxedo body** — used in Mode 1 when centered and larger
+The canonical render is `mask-base.svg` — Faceless mask + tuxedo body in one composition. `components/Mask.tsx` inlines this and punches viseme + eye holes through it via SVG `<mask>`. This is what ships in Mode 1 today.
 
-The system picks based on size threshold. Designer needs to provide both versions on transparent backgrounds.
+For Mode 2/3 (when Mask shrinks to a corner), a head-only crop is available as `mask-head.svg`. Not yet wired — gets used when Mode 2/3 ship in Phase 3. Both assets exist in `public/` on transparent backgrounds.
 
 ### Subtitles
 - Always on by default (Baz can toggle off in admin if needed)
@@ -250,7 +249,7 @@ The system picks based on size threshold. Designer needs to provide both version
         ↓
 [Stream remaining text to ElevenLabs TTS]
         ↓
-[Audio plays via MediaSource, lips animate via amplitude analysis]  (lips = Phase 2)
+[Audio plays via MediaSource, viseme state cycles during speech]  (placeholder cycle = Phase 2a.D; real timestamp-driven mapping = Phase 2a.3)
         ↓
 [Status returns to "listening", waits for next press / wake word]
 ```
@@ -387,8 +386,10 @@ Account map (which email owns which key) lives in `~/Desktop/mask-accounts.txt`.
 - [ ] Real Mask voice auditioned and locked (prerequisite — see Voice configuration)
 - [ ] Admin panel with pre-session approval flow
 - [ ] Cohort + Track + Session models (deploy SQL schema)
-- [ ] Mask SVG with amplitude-reactive animation
-- [ ] Lip sync (Level 2 — viseme morphing)
+- [ ] Mask SVG with amplitude-reactive animation — *pivoted to viseme architecture in Phase 2a; amplitude-reactive variant not pursued*
+- [x] Mask SVG with viseme architecture (Phase 2a Substep A) — *6 visemes (rest, closed, open-a/e/o/u) punched through mask-base via SVG mask cutout composition*
+- [x] Viseme state plumbing (Phase 2a Substep C/D) — *VoiceLoop owns viseme state; 200ms placeholder cycle during speech. Not real lip sync.*
+- [ ] Lip sync (Level 2 — viseme morphing) — *blocked on 2a.2 (TTS timestamps) + 2a.3 (mapping engine)*
 - [ ] Memory tables + cross-session recall
 - [ ] Subtitles rendering
 
