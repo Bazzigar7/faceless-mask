@@ -1,16 +1,24 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import StatusIndicator, { Status } from "./StatusIndicator";
+import { type Status } from "./StatusIndicator";
 
 const MIN_CHUNK_CHARS = 40;
 const SENTENCE_END = /[.!?]\s/;
 
-export default function VoiceLoop() {
+export default function VoiceLoop({
+  onStatusChange,
+}: {
+  onStatusChange?: (status: Status) => void;
+} = {}) {
   const [status, setStatus] = useState<Status>("idle");
   const [transcript, setTranscript] = useState("");
   const [reply, setReply] = useState("");
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    onStatusChange?.(status);
+  }, [status, onStatusChange]);
 
   const recorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
@@ -243,7 +251,7 @@ export default function VoiceLoop() {
   const buttonDisabled = status === "thinking" || status === "speaking";
 
   return (
-    <div className="flex flex-col items-center gap-6">
+    <div className="fixed inset-x-0 bottom-0 z-20 flex flex-col-reverse items-center gap-3 px-4 pb-20">
       <button
         type="button"
         disabled={buttonDisabled}
@@ -258,40 +266,32 @@ export default function VoiceLoop() {
           e.preventDefault();
           stopRecording();
         }}
-        className={`select-none rounded-full px-12 py-12 text-xl font-medium text-white shadow-lg transition active:scale-95 disabled:cursor-not-allowed disabled:opacity-50 ${
-          status === "listening"
-            ? "bg-emerald-600"
-            : status === "speaking"
-              ? "bg-sky-600"
-              : status === "thinking"
-                ? "bg-amber-600"
-                : "bg-zinc-800 hover:bg-zinc-700"
-        }`}
+        className="select-none rounded-full bg-black/40 px-6 py-2.5 text-sm font-medium text-white shadow-lg backdrop-blur-sm transition hover:bg-black/55 active:scale-95 disabled:cursor-not-allowed disabled:opacity-50"
       >
-        {status === "listening" ? "Listening" : "Hold to talk"}
+        Hold to speak
       </button>
-
-      <StatusIndicator status={status} />
 
       <audio ref={audioRef} autoPlay />
 
-      {transcript && (
-        <div className="w-full max-w-xl rounded-md bg-zinc-900/60 p-3 text-sm text-zinc-300">
-          <div className="text-xs uppercase tracking-wide text-zinc-500">You</div>
-          <div>{transcript}</div>
-        </div>
-      )}
-      {reply && (
-        <div className="w-full max-w-xl rounded-md bg-zinc-900/60 p-3 text-sm text-zinc-100">
-          <div className="text-xs uppercase tracking-wide text-zinc-500">Mask</div>
-          <div>{reply}</div>
-        </div>
-      )}
-      {error && (
-        <div className="w-full max-w-xl rounded-md bg-red-950/60 p-3 text-sm text-red-200">
-          {error}
-        </div>
-      )}
+      <div className="hidden">
+        {transcript && (
+          <div className="w-full max-w-xl rounded-md bg-zinc-900/60 p-3 text-sm text-zinc-300">
+            <div className="text-xs uppercase tracking-wide text-zinc-500">You</div>
+            <div>{transcript}</div>
+          </div>
+        )}
+        {reply && (
+          <div className="w-full max-w-xl rounded-md bg-zinc-900/60 p-3 text-sm text-zinc-100">
+            <div className="text-xs uppercase tracking-wide text-zinc-500">Mask</div>
+            <div>{reply}</div>
+          </div>
+        )}
+        {error && (
+          <div className="w-full max-w-xl rounded-md bg-red-950/60 p-3 text-sm text-red-200">
+            {error}
+          </div>
+        )}
+      </div>
     </div>
   );
 }
