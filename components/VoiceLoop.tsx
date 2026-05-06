@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { type Viseme } from "./Mask";
 import { type Status } from "./StatusIndicator";
 
 const MIN_CHUNK_CHARS = 40;
@@ -8,10 +9,13 @@ const SENTENCE_END = /[.!?]\s/;
 
 export default function VoiceLoop({
   onStatusChange,
+  onVisemeChange,
 }: {
   onStatusChange?: (status: Status) => void;
+  onVisemeChange?: (viseme: Viseme) => void;
 } = {}) {
   const [status, setStatus] = useState<Status>("idle");
+  const [viseme, setViseme] = useState<Viseme>("rest");
   const [transcript, setTranscript] = useState("");
   const [reply, setReply] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -19,6 +23,10 @@ export default function VoiceLoop({
   useEffect(() => {
     onStatusChange?.(status);
   }, [status, onStatusChange]);
+
+  useEffect(() => {
+    onVisemeChange?.(viseme);
+  }, [viseme, onVisemeChange]);
 
   const recorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
