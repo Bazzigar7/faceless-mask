@@ -129,7 +129,7 @@ export default function Starfield() {
   return (
     <canvas
       ref={canvasRef}
-      className="fixed inset-0 w-screen h-screen -z-10"
+      className="absolute inset-0"
       style={{ backgroundColor: BACKGROUND_COLOR }}
     />
   );
