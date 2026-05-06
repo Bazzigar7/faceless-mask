@@ -28,6 +28,21 @@ export default function VoiceLoop({
     onVisemeChange?.(viseme);
   }, [viseme, onVisemeChange]);
 
+  useEffect(() => {
+    if (status !== "speaking") return;
+    const cycle: Viseme[] = ["closed", "open-a", "open-e", "open-o", "rest"];
+    let i = 1;
+    setViseme(cycle[0]);
+    const id = setInterval(() => {
+      setViseme(cycle[i % cycle.length]);
+      i++;
+    }, 200);
+    return () => {
+      clearInterval(id);
+      setViseme("rest");
+    };
+  }, [status]);
+
   const recorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
   const audioRef = useRef<HTMLAudioElement | null>(null);
