@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import type { Viseme } from "@/lib/types";
+import type { AlignmentData, SentenceAlignment, Viseme } from "@/lib/types";
 import { type Status } from "./StatusIndicator";
 
 const MIN_CHUNK_CHARS = 40;
@@ -50,6 +50,8 @@ export default function VoiceLoop({
   const sourceBufferRef = useRef<SourceBuffer | null>(null);
   const appendQueueRef = useRef<ArrayBuffer[]>([]);
   const ttsQueueRef = useRef<Promise<void>>(Promise.resolve());
+  const alignmentStoreRef = useRef<SentenceAlignment[]>([]);
+  const cumulativeAudioDurationRef = useRef<number>(0);
   const finishedChatRef = useRef(false);
 
   const pumpAppendQueue = useCallback(() => {
@@ -97,7 +99,7 @@ export default function VoiceLoop({
   }, [pumpAppendQueue]);
 
   const ttsChunk = useCallback(
-    (text: string) => {
+    (text: string, sentenceIndex: number) => {
       ttsQueueRef.current = ttsQueueRef.current.then(async () => {
         const res = await fetch("/api/tts", {
           method: "POST",
@@ -107,19 +109,72 @@ export default function VoiceLoop({
         if (!res.ok || !res.body) {
           throw new Error(`TTS failed: ${res.status}`);
         }
+
+        const accumulated: AlignmentData = {
+          characters: [],
+          character_start_times_seconds: [],
+          character_end_times_seconds: [],
+        };
+
+        const handleLine = (line: string) => {
+          if (!line) return;
+          const parsed = JSON.parse(line) as {
+            audio_base64?: string;
+            alignment?: AlignmentData | null;
+          };
+          if (parsed.audio_base64) {
+            const binary = atob(parsed.audio_base64);
+            const bytes = new Uint8Array(binary.length);
+            for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+            appendQueueRef.current.push(bytes.buffer as ArrayBuffer);
+            pumpAppendQueue();
+          }
+          if (parsed.alignment) {
+            accumulated.characters.push(...parsed.alignment.characters);
+            accumulated.character_start_times_seconds.push(
+              ...parsed.alignment.character_start_times_seconds,
+            );
+            accumulated.character_end_times_seconds.push(
+              ...parsed.alignment.character_end_times_seconds,
+            );
+          }
+        };
+
         const reader = res.body.getReader();
+        const decoder = new TextDecoder();
+        let lineBuffer = "";
+
         while (true) {
           const { value, done } = await reader.read();
           if (done) break;
-          if (value) {
-            // Detach into a clean ArrayBuffer to satisfy SourceBuffer's BufferSource type
-            const ab = value.buffer.slice(
-              value.byteOffset,
-              value.byteOffset + value.byteLength,
-            );
-            appendQueueRef.current.push(ab);
-            pumpAppendQueue();
+          lineBuffer += decoder.decode(value, { stream: true });
+          let nlIndex = lineBuffer.indexOf("\n");
+          while (nlIndex !== -1) {
+            const line = lineBuffer.slice(0, nlIndex).trim();
+            lineBuffer = lineBuffer.slice(nlIndex + 1);
+            handleLine(line);
+            nlIndex = lineBuffer.indexOf("\n");
           }
+        }
+        // Server may close without a trailing newline — flush whatever remains.
+        const tail = lineBuffer.trim();
+        if (tail) handleLine(tail);
+
+        const durationSec =
+          accumulated.character_end_times_seconds[
+            accumulated.character_end_times_seconds.length - 1
+          ] ?? 0;
+        const audioStartTime = cumulativeAudioDurationRef.current;
+        alignmentStoreRef.current.push({ sentenceIndex, audioStartTime, alignment: accumulated });
+        cumulativeAudioDurationRef.current += durationSec;
+
+        if (process.env.NODE_ENV !== "production") {
+          console.log("[2a.2 alignment]", {
+            sentenceIndex,
+            audioStartTime,
+            charCount: accumulated.characters.length,
+            durationSec,
+          });
         }
       });
       return ttsQueueRef.current;
@@ -135,6 +190,8 @@ export default function VoiceLoop({
       finishedChatRef.current = false;
       appendQueueRef.current = [];
       ttsQueueRef.current = Promise.resolve();
+      alignmentStoreRef.current = [];
+      cumulativeAudioDurationRef.current = 0;
 
       try {
         setStatus("thinking");
@@ -174,6 +231,7 @@ export default function VoiceLoop({
         const decoder = new TextDecoder();
         let buffer = "";
         let fullReply = "";
+        let sentenceCounter = 0;
 
         while (true) {
           const { value, done } = await reader.read();
@@ -190,13 +248,13 @@ export default function VoiceLoop({
             const cut = m.index + m[0].length;
             const sentence = buffer.slice(0, cut).trim();
             buffer = buffer.slice(cut);
-            if (sentence) ttsChunk(sentence).catch((e) => setError(String(e)));
+            if (sentence) ttsChunk(sentence, sentenceCounter++).catch((e) => setError(String(e)));
           }
         }
 
         // Flush remaining buffer as final TTS chunk
         const tail = buffer.trim();
-        if (tail) ttsChunk(tail).catch((e) => setError(String(e)));
+        if (tail) ttsChunk(tail, sentenceCounter++).catch((e) => setError(String(e)));
 
         // Wait for all TTS chunks to land in the buffer, then signal end of stream
         await ttsQueueRef.current;

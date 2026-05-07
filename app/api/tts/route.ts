@@ -23,13 +23,13 @@ export async function POST(req: NextRequest) {
   });
 
   const eleven = await fetch(
-    `https://api.elevenlabs.io/v1/text-to-speech/${voiceId}/stream?${params.toString()}`,
+    `https://api.elevenlabs.io/v1/text-to-speech/${voiceId}/stream/with-timestamps?${params.toString()}`,
     {
       method: "POST",
       headers: {
         "xi-api-key": apiKey,
         "Content-Type": "application/json",
-        Accept: "audio/mpeg",
+        Accept: "application/x-ndjson",
       },
       body: JSON.stringify({
         text,
@@ -49,7 +49,7 @@ export async function POST(req: NextRequest) {
 
   return new Response(eleven.body, {
     headers: {
-      "Content-Type": "audio/mpeg",
+      "Content-Type": "application/x-ndjson",
       "Cache-Control": "no-store",
     },
   });
