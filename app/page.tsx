@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import Mask, { type Viseme } from "@/components/Mask";
+import Mask from "@/components/Mask";
+import type { Viseme } from "@/lib/types";
 import Starfield from "@/components/Starfield";
 import StatusIndicator, { type Status } from "@/components/StatusIndicator";
 import VoiceLoop from "@/components/VoiceLoop";

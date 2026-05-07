@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { type Viseme } from "./Mask";
+import type { Viseme } from "@/lib/types";
 import { type Status } from "./StatusIndicator";
 
 const MIN_CHUNK_CHARS = 40;

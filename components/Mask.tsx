@@ -1,6 +1,6 @@
 'use client';
 
-export type Viseme = 'rest' | 'closed' | 'open-a' | 'open-e' | 'open-o' | 'open-u';
+import type { Viseme } from '@/lib/types';
 
 interface Props {
   viseme?: Viseme;
