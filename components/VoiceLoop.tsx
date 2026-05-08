@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { AlignmentData, SentenceAlignment, Viseme } from "@/lib/types";
+import { useLipSync } from "@/lib/useLipSync";
 import { type Status } from "./StatusIndicator";
 
 const MIN_CHUNK_CHARS = 40;
@@ -15,33 +16,9 @@ export default function VoiceLoop({
   onVisemeChange?: (viseme: Viseme) => void;
 } = {}) {
   const [status, setStatus] = useState<Status>("idle");
-  const [viseme, setViseme] = useState<Viseme>("rest");
   const [transcript, setTranscript] = useState("");
   const [reply, setReply] = useState("");
   const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    onStatusChange?.(status);
-  }, [status, onStatusChange]);
-
-  useEffect(() => {
-    onVisemeChange?.(viseme);
-  }, [viseme, onVisemeChange]);
-
-  useEffect(() => {
-    if (status !== "speaking") return;
-    const cycle: Viseme[] = ["closed", "open-a", "open-e", "open-o", "rest"];
-    let i = 1;
-    setViseme(cycle[0]);
-    const id = setInterval(() => {
-      setViseme(cycle[i % cycle.length]);
-      i++;
-    }, 200);
-    return () => {
-      clearInterval(id);
-      setViseme("rest");
-    };
-  }, [status]);
 
   const recorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
@@ -53,6 +30,16 @@ export default function VoiceLoop({
   const alignmentStoreRef = useRef<SentenceAlignment[]>([]);
   const cumulativeAudioDurationRef = useRef<number>(0);
   const finishedChatRef = useRef(false);
+
+  const viseme = useLipSync(audioRef, alignmentStoreRef);
+
+  useEffect(() => {
+    onStatusChange?.(status);
+  }, [status, onStatusChange]);
+
+  useEffect(() => {
+    onVisemeChange?.(viseme);
+  }, [viseme, onVisemeChange]);
 
   const pumpAppendQueue = useCallback(() => {
     const sb = sourceBufferRef.current;
