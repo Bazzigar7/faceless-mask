@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { AlignmentData, SentenceAlignment, Viseme } from "@/lib/types";
 import { useLipSync } from "@/lib/useLipSync";
+import { computeWordSegments } from "@/lib/wordSegments";
 import { type Status } from "./StatusIndicator";
 
 const MIN_CHUNK_CHARS = 40;
@@ -158,7 +159,8 @@ export default function VoiceLoop({
             accumulated.character_end_times_seconds.length - 1
           ] ?? 0;
         const audioStartTime = cumulativeAudioDurationRef.current;
-        alignmentStoreRef.current.push({ sentenceIndex, audioStartTime, alignment: accumulated });
+        const words = computeWordSegments(accumulated);
+        alignmentStoreRef.current.push({ sentenceIndex, audioStartTime, alignment: accumulated, words });
         cumulativeAudioDurationRef.current += durationSec;
 
         if (process.env.NODE_ENV !== "production") {
@@ -167,6 +169,7 @@ export default function VoiceLoop({
             audioStartTime,
             charCount: accumulated.characters.length,
             durationSec,
+            wordCount: words.length,
           });
         }
       });
