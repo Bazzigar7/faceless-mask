@@ -13,17 +13,14 @@ const SENTENCE_END = /[.!?]\s/;
 export default function VoiceLoop({
   onStatusChange,
   onVisemeChange,
-  onReplyChange,
   onWordStateChange,
 }: {
   onStatusChange?: (status: Status) => void;
   onVisemeChange?: (viseme: Viseme) => void;
-  onReplyChange?: (reply: string) => void;
   onWordStateChange?: (state: WordState) => void;
 } = {}) {
   const [status, setStatus] = useState<Status>("idle");
   const [transcript, setTranscript] = useState("");
-  const [reply, setReply] = useState("");
   const [error, setError] = useState<string | null>(null);
 
   const recorderRef = useRef<MediaRecorder | null>(null);
@@ -47,10 +44,6 @@ export default function VoiceLoop({
   useEffect(() => {
     onVisemeChange?.(viseme);
   }, [viseme, onVisemeChange]);
-
-  useEffect(() => {
-    onReplyChange?.(reply);
-  }, [reply, onReplyChange]);
 
   useEffect(() => {
     onWordStateChange?.(wordState);
@@ -196,7 +189,6 @@ export default function VoiceLoop({
     async (audioBlob: Blob) => {
       setError(null);
       setTranscript("");
-      setReply("");
       finishedChatRef.current = false;
       appendQueueRef.current = [];
       ttsQueueRef.current = Promise.resolve();
@@ -240,7 +232,6 @@ export default function VoiceLoop({
         const reader = chatRes.body.getReader();
         const decoder = new TextDecoder();
         let buffer = "";
-        let fullReply = "";
         let sentenceCounter = 0;
 
         while (true) {
@@ -248,8 +239,6 @@ export default function VoiceLoop({
           if (done) break;
           const chunk = decoder.decode(value, { stream: true });
           buffer += chunk;
-          fullReply += chunk;
-          setReply(fullReply);
 
           // Flush completed sentences from buffer
           while (buffer.length >= MIN_CHUNK_CHARS) {
@@ -369,12 +358,6 @@ export default function VoiceLoop({
           <div className="w-full max-w-xl rounded-md bg-zinc-900/60 p-3 text-sm text-zinc-300">
             <div className="text-xs uppercase tracking-wide text-zinc-500">You</div>
             <div>{transcript}</div>
-          </div>
-        )}
-        {reply && (
-          <div className="w-full max-w-xl rounded-md bg-zinc-900/60 p-3 text-sm text-zinc-100">
-            <div className="text-xs uppercase tracking-wide text-zinc-500">Mask</div>
-            <div>{reply}</div>
           </div>
         )}
         {error && (
