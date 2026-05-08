@@ -389,9 +389,13 @@ Account map (which email owns which key) lives in `~/Desktop/mask-accounts.txt`.
 - [ ] Mask SVG with amplitude-reactive animation — *pivoted to viseme architecture in Phase 2a; amplitude-reactive variant not pursued*
 - [x] Mask SVG with viseme architecture (Phase 2a Substep A) — *6 visemes (rest, closed, open-a/e/o/u) punched through mask-base via SVG mask cutout composition*
 - [x] Viseme state plumbing (Phase 2a Substep C/D) — *VoiceLoop owns viseme state; 200ms placeholder cycle during speech. Not real lip sync.*
-- [ ] Lip sync (Level 2 — viseme morphing) — *blocked on 2a.2 (TTS timestamps) + 2a.3 (mapping engine)*
+- [x] TTS alignment + per-sentence storage (Phase 2a.2 — shipped 2026-05-08) — *ElevenLabs with-timestamps endpoint, NDJSON line buffering, per-sentence alignment store with cumulative audioStartTime in audio-time*
+- [x] Real lip sync (Phase 2a.3 — shipped 2026-05-08) — *useLipSync rAF hook reads audio.currentTime against alignment, charToViseme maps active character to viseme, snap transitions*
+- [x] Subtitles streaming (Phase 2a.4 — shipped 2026-05-08) — *Noto Sans/Tamil/Devanagari fonts, Subtitles component renders streaming reply with asymmetric fade, status-keyed 2s visibility timer*
+- [x] Karaoke subtitles (Phase 2a.5 — shipped 2026-05-08) — *useCurrentWord hook + computeWordSegments + Subtitles rewrite. Current word white, rest gray, holds previous sentence during gaps. Reply chain removed.*
+- [x] Lip sync (Level 2 — viseme morphing) — *shipped 2026-05-08 via 2a.3 (useLipSync hook + 6-viseme mapping)*
 - [ ] Memory tables + cross-session recall
-- [ ] Subtitles rendering
+- [x] Subtitles rendering — *shipped 2026-05-08 via 2a.4 (streaming) + 2a.5 (karaoke per-word highlight)*
 
 ### Phase 3 — Stage view + assets + wake word
 - [ ] Asset library with tagging

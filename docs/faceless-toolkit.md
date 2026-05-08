@@ -47,6 +47,16 @@
 - **Frequency**: 1st observation
 - **Notes**: Mask outputs markdown emphasis (e.g., *word*) in responses, which renders as literal asterisks in subtitles. Three resolution options: (a) strip markdown before render, (b) render as bold, (c) update personality.ts to avoid markdown for voice output. Lean: personality update — markdown belongs in chat, not voice. Defer until karaoke subtitles ship and we see how often this trips up real sessions.
 
+- **Need**: Remove hidden debug block from VoiceLoop.tsx
+- **Source**: 2026-05-08, surfaced during 2a.5.3 reply-chain audit
+- **Frequency**: 1st observation
+- **Notes**: `<div className="hidden">` wrapper at VoiceLoop's bottom (lines ~344+) has been `display: none` since 2a.B.2 with no toggle to reveal. After 2a.5.6 reply-chain cleanup it now contains only transcript and error sub-blocks. Either the entire block is dead UI to delete (and free the transcript/error state vars if they end up orphaned) or a toggle to reveal it should ship. Lean: delete. Defer to a dedicated cleanup phase to keep diffs single-concern.
+
+- **Need**: Extract findActiveSentence helper shared by useLipSync and useCurrentWord
+- **Source**: 2026-05-08, observed during 2a.5.2 useCurrentWord plan
+- **Frequency**: 1st observation
+- **Notes**: `useLipSync` (lib/useLipSync.ts:23–37) and `useCurrentWord` (lib/useCurrentWord.ts:48–58) both walk `alignmentStoreRef` looking for the entry whose `[audioStartTime, audioStartTime + duration)` interval contains `audio.currentTime`. Identical logic, copy-pasted across two files. Pure function extraction (`lib/findActiveSentence.ts` taking store + t, returning entry-or-null) would dedupe cleanly. Both hooks would call it then do their respective inner work (`charToViseme` vs word lookup). Defer to a dedicated cleanup phase.
+
 ---
 
 ## Categories to watch for
