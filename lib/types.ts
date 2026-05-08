@@ -6,8 +6,15 @@ export interface AlignmentData {
   character_end_times_seconds: number[];
 }
 
+export interface WordSegment {
+  text: string;
+  startTime: number;
+  endTime: number;
+}
+
 export interface SentenceAlignment {
   sentenceIndex: number;
   audioStartTime: number;
   alignment: AlignmentData;
+  words?: WordSegment[];
 }
