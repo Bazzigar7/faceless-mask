@@ -42,6 +42,11 @@
 - **Frequency**: 1st observation
 - **Notes**: Current Mask asset has a permanent smile that fights with lip movement visually. Asset design constraint, not a sync issue. Defer — likely revisit when Mask asset audition + final voice are locked.
 
+- **Need**: Strip markdown emphasis from voice/subtitle output
+- **Source**: 2026-05-08, own observation during 2a.5.3 wordCount verification
+- **Frequency**: 1st observation
+- **Notes**: Mask outputs markdown emphasis (e.g., *word*) in responses, which renders as literal asterisks in subtitles. Three resolution options: (a) strip markdown before render, (b) render as bold, (c) update personality.ts to avoid markdown for voice output. Lean: personality update — markdown belongs in chat, not voice. Defer until karaoke subtitles ship and we see how often this trips up real sessions.
+
 ---
 
 ## Categories to watch for
