@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import localFont from "next/font/local";
+import { Noto_Sans, Noto_Sans_Tamil, Noto_Sans_Devanagari } from "next/font/google";
 import "./globals.css";
 
 const geistSans = localFont({
@@ -11,6 +12,24 @@ const geistMono = localFont({
   src: "./fonts/GeistMonoVF.woff",
   variable: "--font-geist-mono",
   weight: "100 900",
+});
+const notoSans = Noto_Sans({
+  subsets: ["latin"],
+  weight: ["400"],
+  variable: "--font-noto-sans",
+  display: "swap",
+});
+const notoSansTamil = Noto_Sans_Tamil({
+  subsets: ["tamil"],
+  weight: ["400"],
+  variable: "--font-noto-sans-tamil",
+  display: "swap",
+});
+const notoSansDevanagari = Noto_Sans_Devanagari({
+  subsets: ["devanagari"],
+  weight: ["400"],
+  variable: "--font-noto-sans-devanagari",
+  display: "swap",
 });
 
 export const metadata: Metadata = {
@@ -26,7 +45,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
+        className={`${geistSans.variable} ${geistMono.variable} ${notoSans.variable} ${notoSansTamil.variable} ${notoSansDevanagari.variable} antialiased`}
       >
         {children}
       </body>
