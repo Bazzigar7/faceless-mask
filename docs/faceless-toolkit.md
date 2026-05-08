@@ -28,6 +28,22 @@
 
 ---
 
+## Mask polish backlog
+
+> Observations from building Mask that aren't bugs but would improve the experience. Same rule as captured needs above: capture, don't act. Revisit after Phase 5 ships, or sooner if the same observation recurs.
+
+- **Need**: Reduce viseme ping-ponging during running speech
+- **Source**: 2026-05-08, own observation during 2a.3 lip sync first dev test
+- **Frequency**: 1st observation
+- **Notes**: Real speech has ~7-12 viseme transitions/sec, which is correct behavior — partly a perceptual recalibration after the 200ms placeholder cycle. Amplified because every unmapped consonant falls through to 'rest', causing ping-pong between mouth-shapes and rest. Possible polish: map more consonants to a neutral-open viseme to soften the ping-pong. Defer — heuristic is intentionally simple per 2a.3 spec; revisit after a real classroom session.
+
+- **Need**: Tweak mask-base.svg toward a more neutral resting expression
+- **Source**: 2026-05-08, own observation during 2a.3 lip sync first dev test
+- **Frequency**: 1st observation
+- **Notes**: Current Mask asset has a permanent smile that fights with lip movement visually. Asset design constraint, not a sync issue. Defer — likely revisit when Mask asset audition + final voice are locked.
+
+---
+
 ## Categories to watch for
 
 These are the buckets we expect ideas to fall into. Not exhaustive — add new ones as they emerge.
