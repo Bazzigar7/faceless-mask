@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { AlignmentData, SentenceAlignment, Viseme } from "@/lib/types";
 import { useLipSync } from "@/lib/useLipSync";
+import { useCurrentWord, type WordState } from "@/lib/useCurrentWord";
 import { computeWordSegments } from "@/lib/wordSegments";
 import { type Status } from "./StatusIndicator";
 
@@ -13,10 +14,12 @@ export default function VoiceLoop({
   onStatusChange,
   onVisemeChange,
   onReplyChange,
+  onWordStateChange,
 }: {
   onStatusChange?: (status: Status) => void;
   onVisemeChange?: (viseme: Viseme) => void;
   onReplyChange?: (reply: string) => void;
+  onWordStateChange?: (state: WordState) => void;
 } = {}) {
   const [status, setStatus] = useState<Status>("idle");
   const [transcript, setTranscript] = useState("");
@@ -35,6 +38,7 @@ export default function VoiceLoop({
   const finishedChatRef = useRef(false);
 
   const viseme = useLipSync(audioRef, alignmentStoreRef);
+  const wordState = useCurrentWord(audioRef, alignmentStoreRef);
 
   useEffect(() => {
     onStatusChange?.(status);
@@ -47,6 +51,16 @@ export default function VoiceLoop({
   useEffect(() => {
     onReplyChange?.(reply);
   }, [reply, onReplyChange]);
+
+  useEffect(() => {
+    onWordStateChange?.(wordState);
+    if (process.env.NODE_ENV !== "production") {
+      console.log("[2a.5 word state]", {
+        sentenceIndex: wordState.sentenceIndex,
+        activeWordIndex: wordState.activeWordIndex,
+      });
+    }
+  }, [wordState, onWordStateChange]);
 
   const pumpAppendQueue = useCallback(() => {
     const sb = sourceBufferRef.current;
