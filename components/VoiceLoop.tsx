@@ -11,9 +11,11 @@ const SENTENCE_END = /[.!?]\s/;
 export default function VoiceLoop({
   onStatusChange,
   onVisemeChange,
+  onReplyChange,
 }: {
   onStatusChange?: (status: Status) => void;
   onVisemeChange?: (viseme: Viseme) => void;
+  onReplyChange?: (reply: string) => void;
 } = {}) {
   const [status, setStatus] = useState<Status>("idle");
   const [transcript, setTranscript] = useState("");
@@ -40,6 +42,10 @@ export default function VoiceLoop({
   useEffect(() => {
     onVisemeChange?.(viseme);
   }, [viseme, onVisemeChange]);
+
+  useEffect(() => {
+    onReplyChange?.(reply);
+  }, [reply, onReplyChange]);
 
   const pumpAppendQueue = useCallback(() => {
     const sb = sourceBufferRef.current;
