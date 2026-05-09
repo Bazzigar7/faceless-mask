@@ -46,7 +46,7 @@ The best teacher anyone remembers from school is the one who told funny stories 
 | Database | Supabase | Already paid for, already integrated |
 | LLM | Claude Sonnet 4.6 (`claude-sonnet-4-6`) | Best speed-quality tradeoff for voice. Prompt caching enabled from day 1. |
 | Speech-to-text | OpenAI Whisper (`whisper-1`) | Auto-detects code-mix English/Tamil/Hindi. Pivoted from Deepgram in Phase 1 (see Known reversals). |
-| Text-to-speech | ElevenLabs Multilingual v2 | Free-tier compatible. Will swap to Turbo v2.5 on Starter ($5/mo) for ~500-800ms latency win. |
+| Text-to-speech | ElevenLabs Multilingual v2 | Starter tier ($5/mo) active; Turbo v2.5 flip is unblocked, deferred to its own substep for the latency win. |
 | Wake word | Picovoice Porcupine | Free for personal use, runs in browser. Phase 3. |
 | Animation | SVG + Tailwind transitions + rAF | Framer Motion not installed; deferred until Mode 2/3 transitions are needed in Phase 3. |
 | Hosting | Vercel | Free tier, same workflow as faceless-hub |
@@ -94,7 +94,7 @@ Mask Faceless CoHost/
 │   └── api/
 │       ├── stt/route.ts         # Whisper STT (was Deepgram — see Known reversals)
 │       ├── chat/route.ts        # Claude API endpoint with system prompt + caching
-│       ├── tts/route.ts         # ElevenLabs Multilingual v2 (Turbo v2.5 once on Starter)
+│       ├── tts/route.ts         # ElevenLabs Multilingual v2 (Starter active; Turbo v2.5 flip pending its own substep)
 │       └── session/route.ts     # Session CRUD + memory (Phase 2)
 ├── components/
 │   ├── VoiceLoop.tsx            # Orchestrates STT → chat → TTS (Phase 1)
@@ -123,7 +123,9 @@ Mask Faceless CoHost/
 │   ├── faceless-toolkit.md
 │   └── curriculum-ideas.md      # API keys topic captured
 ├── prompts/
-│   └── claude-code-phase-1.md   # Used to kick off the build
+│   ├── claude-code-phase-1.md   # Used to kick off the build
+│   ├── claude-code-phase-2a.md  # Phase 2a kickoff
+│   └── claude-code-phase-2b1.md # Phase 2b.1 kickoff
 ├── scripts/
 │   └── smoke-test.ts            # End-to-end DB smoke test (Phase 2b.1)
 ├── supabase/
