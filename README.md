@@ -4,6 +4,8 @@
 
 This README is the source of truth. Claude Code reads this on every session. Update it as decisions change.
 
+Operational gotchas and platform-specific quirks (Supabase CLI behaviors, dotenv noise, etc.) are tracked in `docs/platform-notes.md`. Reference there before assuming a CLI command works the way docs say it does.
+
 ---
 
 ## What Mask is
@@ -81,7 +83,7 @@ The stack above reflects what's actually running. Two layers got pivoted during 
 
 ## Folder structure
 
-Reflects Phase 1 as shipped. Phase 2+ files are listed but commented as not-yet-built.
+Reflects Phase 1 + 2a as shipped. Phase 2b+ files are forward-looking.
 
 ```
 Mask Faceless CoHost/
@@ -107,7 +109,7 @@ Mask Faceless CoHost/
 │   └── Starfield.tsx            # Animated background (Phase 2)
 ├── lib/
 │   ├── personality.ts           # Mask's system prompt — THE BRAIN (Phase 1)
-│   ├── supabase.ts              # DB client (connected, schema not deployed yet)
+│   ├── supabase.ts              # Typed DB client (schema deployed Phase 2b.1)
 │   ├── database.types.ts        # Generated Supabase types — DO NOT hand-edit (Phase 2b.1)
 │   ├── visualCommands.ts        # Parser for "show", "pull up", "play" (Phase 3)
 │   ├── activityCommands.ts      # Parser for "Mask, run Bull Bear" (Phase 3)
@@ -121,7 +123,8 @@ Mask Faceless CoHost/
 ├── docs/
 │   ├── faceless-edtech-strategy.md
 │   ├── faceless-toolkit.md
-│   └── curriculum-ideas.md      # API keys topic captured
+│   ├── curriculum-ideas.md      # API keys topic captured
+│   └── platform-notes.md        # Operational gotchas (CLI quirks, edge cases)
 ├── prompts/
 │   ├── claude-code-phase-1.md   # Used to kick off the build
 │   ├── claude-code-phase-2a.md  # Phase 2a kickoff
@@ -135,6 +138,8 @@ Mask Faceless CoHost/
 ├── .env.local.example
 └── README.md                    # This file
 ```
+
+Note: `supabase/seed.sql` is not present. Supabase CLI v2.98+ no longer auto-creates it on `supabase init`. Schema lives in `migrations/`; we don't need a seed file.
 
 ---
 
@@ -360,7 +365,7 @@ create table asset_usage (
 ANTHROPIC_API_KEY=
 OPENAI_API_KEY=                  # for Whisper STT
 ELEVENLABS_API_KEY=
-ELEVENLABS_VOICE_ID=             # currently Adam: pNInz6obpgDQGcFmaJgB (placeholder)
+ELEVENLABS_VOICE_ID=             # custom Voice Design output, locked 2026-05-08 (was Adam during Phase 1 dev)
 NEXT_PUBLIC_SUPABASE_URL=
 NEXT_PUBLIC_SUPABASE_ANON_KEY=
 SUPABASE_SERVICE_ROLE_KEY=
@@ -369,6 +374,10 @@ SUPABASE_SERVICE_ROLE_KEY=
 # PICOVOICE_ACCESS_KEY=
 # DEEPGRAM_API_KEY=              # if reverting STT (see Known reversals)
 ```
+
+> ⚠️ **Heads up on `NEXT_PUBLIC_SUPABASE_URL`:** Use the bare project URL with no path — `https://<ref>.supabase.co` — never `https://<ref>.supabase.co/rest/v1/`. The `supabase-js` client appends `/rest/v1/` itself; including it in the env var causes doubled paths and 404s on every query. The Supabase dashboard's "Connect" or "REST API" view sometimes shows the URL with `/rest/v1/` already appended; strip it on paste.
+
+> ⚠️ **Editor backups when editing `.env.local`:** nano writes `.env.local.save`, vim writes `.env.local~` and `.env.local.swp`, etc. These are backup files containing secrets and must never be committed. The repo's `.gitignore` blocks `.env*.save`, `.env*~`, `.env*.swp`, and `.env*.bak` patterns to belt-and-suspenders this. If your editor uses a different backup convention, add it to `.gitignore`.
 
 Account map (which email owns which key) lives in `~/Desktop/mask-accounts.txt`. Keys themselves only live in `.env.local` (gitignored).
 
@@ -392,7 +401,7 @@ Account map (which email owns which key) lives in `~/Desktop/mask-accounts.txt`.
 - [x] Subtitles rendering (streaming, karaoke word-tracking)
 
 ### Phase 2b — Admin + memory + database
-- [ ] 2b.1: Schema deployed, types generated *(this substep)*
+- [x] 2b.1: Schema deployed, types generated ✅ shipped 2026-05-09
 - [ ] 2b.2: Session context loading
 - [ ] 2b.3: Transcript capture
 - [ ] 2b.4: Admin panel scaffold
