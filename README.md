@@ -48,7 +48,7 @@ The best teacher anyone remembers from school is the one who told funny stories 
 | Speech-to-text | OpenAI Whisper (`whisper-1`) | Auto-detects code-mix English/Tamil/Hindi. Pivoted from Deepgram in Phase 1 (see Known reversals). |
 | Text-to-speech | ElevenLabs Multilingual v2 | Free-tier compatible. Will swap to Turbo v2.5 on Starter ($5/mo) for ~500-800ms latency win. |
 | Wake word | Picovoice Porcupine | Free for personal use, runs in browser. Phase 3. |
-| Animation | Framer Motion + SVG | Mask image with separated lip layer. Phase 2. |
+| Animation | SVG + Tailwind transitions + rAF | Framer Motion not installed; deferred until Mode 2/3 transitions are needed in Phase 3. |
 | Hosting | Vercel | Free tier, same workflow as faceless-hub |
 
 ### Known reversals
@@ -57,7 +57,7 @@ The stack above reflects what's actually running. Two layers got pivoted during 
 
 1. **Deepgram Nova-2 → OpenAI Whisper.** Deepgram login was broken on the `bazaffiliate` account during Phase 1. Whisper handles Indian English and code-mix fine and was a 5-minute swap. Reversal trigger: when streaming STT becomes a priority in Phase 3 (lower latency, partial transcripts for "interruptibility"), revisit Deepgram once auth is resolved. Code path: `app/api/stt/route.ts`.
 
-2. **ElevenLabs Turbo v2.5 → Multilingual v2.** Turbo isn't available on the free tier. Currently free tier is fine for development. Reversal trigger: before recording the public launch clip OR when latency consistently bothers Baz in testing. Upgrade to Starter ($5/mo) and change the model string in `app/api/tts/route.ts`. One-line flip.
+2. **ElevenLabs Turbo v2.5 → Multilingual v2.** Turbo isn't available on the free tier. Starter tier ($5/mo) is now active as of 2026-05-09, which unblocks the Turbo v2.5 model-string flip in `app/api/tts/route.ts`. The flip itself is unblocked but deferred to a separate substep so the latency win lands as a discrete, measurable change.
 
 ---
 
@@ -108,6 +108,7 @@ Mask Faceless CoHost/
 ├── lib/
 │   ├── personality.ts           # Mask's system prompt — THE BRAIN (Phase 1)
 │   ├── supabase.ts              # DB client (connected, schema not deployed yet)
+│   ├── database.types.ts        # Generated Supabase types — DO NOT hand-edit (Phase 2b.1)
 │   ├── visualCommands.ts        # Parser for "show", "pull up", "play" (Phase 3)
 │   ├── activityCommands.ts      # Parser for "Mask, run Bull Bear" (Phase 3)
 │   ├── memory.ts                # Cross-session memory layer (Phase 2)
@@ -123,6 +124,11 @@ Mask Faceless CoHost/
 │   └── curriculum-ideas.md      # API keys topic captured
 ├── prompts/
 │   └── claude-code-phase-1.md   # Used to kick off the build
+├── scripts/
+│   └── smoke-test.ts            # End-to-end DB smoke test (Phase 2b.1)
+├── supabase/
+│   ├── config.toml              # CLI config (Phase 2b.1)
+│   └── migrations/              # SQL migrations applied via `supabase db push` (Phase 2b.1)
 ├── .env.local                   # gitignored
 ├── .env.local.example
 └── README.md                    # This file
@@ -168,16 +174,16 @@ The approved set becomes Mask's session context. Mask doesn't randomly throw in 
 
 ## Voice configuration (ElevenLabs)
 
-Current voice in Phase 1 is **Adam (`pNInz6obpgDQGcFmaJgB`)** — placeholder only. Real Mask voice still needs to be auditioned and picked. Audition is a Phase 2 prerequisite — lip sync work is much harder to evaluate against a stand-in voice.
+The real Mask voice was created via ElevenLabs Voice Design on 2026-05-08 and is locked in `ELEVENLABS_VOICE_ID`. Originally Adam (`pNInz6obpgDQGcFmaJgB`) during Phase 1 development; replaced by the custom Voice Design output on 2026-05-08.
 
-Target profile for the real voice:
+The target profile that informed the Voice Design output:
 
 - **Pitch**: slightly lower than typical AI assistants
 - **Pace**: moderate, never rushed
 - **Tone**: warm but not bubbly, intriguing not chirpy
 - **Accent**: neutral / slight Indian English would be ideal but optional
 
-Voice ID gets set in `.env.local` as `ELEVENLABS_VOICE_ID`.
+Voice ID is set in `.env.local` as `ELEVENLABS_VOICE_ID`.
 
 ---
 
@@ -266,7 +272,11 @@ The 2s target is non-negotiable for live classroom sessions. Phase 1 demoability
 
 ## Database schema
 
-Schema below is designed for Phase 2. Phase 1 has the Supabase client connected but no tables deployed.
+Schema below is the Phase 2b deployment target. Phase 1 has the Supabase client connected; Phase 2b.1 deploys the schema and generates types.
+
+Memory layer for cross-session callbacks is deferred — `sessions.summary` carries the per-session recap, which is enough for V1.
+
+`brief` stores the full approved bundle as JSONB: `{ openers, activities, stories, notes }`. Each item has `text` and `source` fields. The shape evolves without migrations.
 
 ```sql
 -- Colleges
@@ -308,9 +318,8 @@ create table sessions (
   date timestamptz not null,
   topic text not null,
   brief jsonb,
-  approved_openers jsonb,
-  approved_activities jsonb,
   transcript text,
+  summary text,           -- Claude-generated end-of-session summary, retrieved next session as context
   duration_minutes int,
   highlight_moments jsonb,
   created_at timestamptz default now()
@@ -336,17 +345,9 @@ create table asset_usage (
   triggered_at timestamptz,
   trigger_phrase text
 );
-
--- Memory snapshots
-create table memory (
-  id uuid primary key default gen_random_uuid(),
-  cohort_id uuid references cohorts(id),
-  key text not null,
-  value jsonb not null,
-  updated_at timestamptz default now(),
-  unique(cohort_id, key)
-);
 ```
+
+**Row-level security:** RLS is disabled on all tables in V1. Mask runs locally on a single user (Baz) with no public-facing API. When the admin route gets a password gate (V2 or when deployed publicly), RLS gets enabled with policies. This decision is documented in the migration file.
 
 ---
 
@@ -378,24 +379,23 @@ Account map (which email owns which key) lives in `~/Desktop/mask-accounts.txt`.
 - [x] STT → Claude → TTS pipeline working end-to-end
 - [x] Personality file loading on every call with prompt caching verified
 - [x] First conversation in office (Mask responded in character on first test)
-- [ ] Latency under 2s — *currently ~3s. Path to <2s: Turbo v2.5 swap on ElevenLabs Starter, streaming STT in Phase 3*
+- [ ] Latency under 2s — *currently ~3s. Starter tier is now active so Turbo v2.5 swap is unblocked; remaining latency wins are Turbo flip + streaming STT in Phase 3.*
 - [ ] Vercel deploy — *not deployed yet, local dev only*
-- [ ] Ship clip recorded and posted
+- [ ] Ship clip recorded and posted *(Recorded 2026-05-09; not posted yet.)*
 
-### Phase 2 — Admin + memory + visual
-- [ ] Real Mask voice auditioned and locked (prerequisite — see Voice configuration)
-- [ ] Admin panel with pre-session approval flow
-- [ ] Cohort + Track + Session models (deploy SQL schema)
-- [ ] Mask SVG with amplitude-reactive animation — *pivoted to viseme architecture in Phase 2a; amplitude-reactive variant not pursued*
-- [x] Mask SVG with viseme architecture (Phase 2a Substep A) — *6 visemes (rest, closed, open-a/e/o/u) punched through mask-base via SVG mask cutout composition*
-- [x] Viseme state plumbing (Phase 2a Substep C/D) — *VoiceLoop owns viseme state; 200ms placeholder cycle during speech. Not real lip sync.*
-- [x] TTS alignment + per-sentence storage (Phase 2a.2 — shipped 2026-05-08) — *ElevenLabs with-timestamps endpoint, NDJSON line buffering, per-sentence alignment store with cumulative audioStartTime in audio-time*
-- [x] Real lip sync (Phase 2a.3 — shipped 2026-05-08) — *useLipSync rAF hook reads audio.currentTime against alignment, charToViseme maps active character to viseme, snap transitions*
-- [x] Subtitles streaming (Phase 2a.4 — shipped 2026-05-08) — *Noto Sans/Tamil/Devanagari fonts, Subtitles component renders streaming reply with asymmetric fade, status-keyed 2s visibility timer*
-- [x] Karaoke subtitles (Phase 2a.5 — shipped 2026-05-08) — *useCurrentWord hook + computeWordSegments + Subtitles rewrite. Current word white, rest gray, holds previous sentence during gaps. Reply chain removed.*
-- [x] Lip sync (Level 2 — viseme morphing) — *shipped 2026-05-08 via 2a.3 (useLipSync hook + 6-viseme mapping)*
-- [ ] Memory tables + cross-session recall
-- [x] Subtitles rendering — *shipped 2026-05-08 via 2a.4 (streaming) + 2a.5 (karaoke per-word highlight)*
+### Phase 2a — Visible Mask + lip sync  ✅ shipped May 8, 2026
+- [x] Real Mask voice auditioned and locked
+- [x] Mask SVG rendered on stage *(originally specified as amplitude-reactive animation; delivered as viseme-based architecture — see lip sync below)*
+- [x] Lip sync (Level 2 — viseme morphing)
+- [x] Subtitles rendering (streaming, karaoke word-tracking)
+
+### Phase 2b — Admin + memory + database
+- [ ] 2b.1: Schema deployed, types generated *(this substep)*
+- [ ] 2b.2: Session context loading
+- [ ] 2b.3: Transcript capture
+- [ ] 2b.4: Admin panel scaffold
+- [ ] 2b.5: Pre-session approval flow
+- [ ] 2b.6: Memory recall
 
 ### Phase 3 — Stage view + assets + wake word
 - [ ] Asset library with tagging
