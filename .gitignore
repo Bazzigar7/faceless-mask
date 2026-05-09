@@ -27,6 +27,10 @@ yarn-error.log*
 
 # local env files
 .env*.local
+.env*.save     # nano backups
+.env*~         # vim/emacs backups
+.env*.swp      # vim swap files
+.env*.bak      # generic backups
 
 # vercel
 .vercel
