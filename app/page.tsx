@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState, type ComponentProps } from "react";
+import { useSearchParams } from "next/navigation";
 import Mask from "@/components/Mask";
 import type { Viseme } from "@/lib/types";
 import type { WordState } from "@/lib/useCurrentWord";
@@ -8,6 +9,14 @@ import Starfield from "@/components/Starfield";
 import StatusIndicator, { type Status } from "@/components/StatusIndicator";
 import Subtitles from "@/components/Subtitles";
 import VoiceLoop from "@/components/VoiceLoop";
+
+function VoiceLoopWithSession(
+  props: Omit<NonNullable<ComponentProps<typeof VoiceLoop>>, "sessionId">,
+) {
+  const searchParams = useSearchParams();
+  const sessionId = searchParams.get("session") ?? undefined;
+  return <VoiceLoop {...props} sessionId={sessionId} />;
+}
 
 export default function Page() {
   const [status, setStatus] = useState<Status>("idle");
@@ -44,11 +53,13 @@ export default function Page() {
         visible={subtitleVisible}
       />
       <StatusIndicator status={status} className="fixed top-6 right-6 z-20" />
-      <VoiceLoop
-        onStatusChange={setStatus}
-        onVisemeChange={setViseme}
-        onWordStateChange={setWordState}
-      />
+      <Suspense>
+        <VoiceLoopWithSession
+          onStatusChange={setStatus}
+          onVisemeChange={setViseme}
+          onWordStateChange={setWordState}
+        />
+      </Suspense>
     </main>
   );
 }

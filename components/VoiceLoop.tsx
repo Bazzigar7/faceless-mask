@@ -14,10 +14,12 @@ export default function VoiceLoop({
   onStatusChange,
   onVisemeChange,
   onWordStateChange,
+  sessionId,
 }: {
   onStatusChange?: (status: Status) => void;
   onVisemeChange?: (viseme: Viseme) => void;
   onWordStateChange?: (state: WordState) => void;
+  sessionId?: string;
 } = {}) {
   const [status, setStatus] = useState<Status>("idle");
   const [transcript, setTranscript] = useState("");
@@ -223,7 +225,7 @@ export default function VoiceLoop({
         const chatRes = await fetch("/api/chat", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ transcript: t }),
+          body: JSON.stringify({ transcript: t, sessionId }),
         });
         if (!chatRes.ok || !chatRes.body) throw new Error(`Chat failed: ${chatRes.status}`);
 
@@ -286,6 +288,12 @@ export default function VoiceLoop({
         setStatus("idle");
       }
     },
+    // sessionId is intentionally omitted from deps. It only sources
+    // from URL search params, and URL changes always trigger a full
+    // page reload (which destroys and recreates this component).
+    // If SPA navigation between sessions is ever added, this
+    // suppression must be revisited.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     [initMediaSource, ttsChunk],
   );
 
