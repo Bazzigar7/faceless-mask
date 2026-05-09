@@ -1,5 +1,7 @@
 import './_load-env';
 import { supabase } from '../lib/supabase';
+import * as crypto from 'node:crypto';
+import { loadSessionContext } from '../lib/sessionContext';
 
 const ids: {
   college: string | null;
@@ -79,6 +81,29 @@ async function main() {
 
   console.log('Joined session row:');
   console.log(JSON.stringify(joined.data, null, 2));
+
+  // 6. loadSessionContext: happy path
+  if (!ids.session) throw new Error('happy path precondition: ids.session not set');
+  const happy = await loadSessionContext(ids.session);
+  if (happy === null) throw new Error('loadSessionContext happy: returned null');
+  if (happy.sessionNumber !== 1) throw new Error(`loadSessionContext happy: sessionNumber=${happy.sessionNumber} expected 1`);
+  if (happy.topic !== 'What is blockchain?') throw new Error(`loadSessionContext happy: topic=${happy.topic}`);
+  if (happy.brief !== null) throw new Error(`loadSessionContext happy: brief expected null, got ${JSON.stringify(happy.brief)}`);
+  if (happy.trackName !== 'Blockchain Foundations') throw new Error(`loadSessionContext happy: trackName=${happy.trackName}`);
+  if (happy.trackTotalSessions !== 6) throw new Error(`loadSessionContext happy: trackTotalSessions=${happy.trackTotalSessions} expected 6`);
+  if (happy.cohortName !== 'GRD Spring 2026') throw new Error(`loadSessionContext happy: cohortName=${happy.cohortName}`);
+  if (happy.collegeName !== 'GRD College of Science') throw new Error(`loadSessionContext happy: collegeName=${happy.collegeName}`);
+  console.log('✓ loadSessionContext happy path');
+
+  // 7. loadSessionContext: not-found path
+  const notFound = await loadSessionContext(crypto.randomUUID());
+  if (notFound !== null) throw new Error(`loadSessionContext not-found: expected null, got ${JSON.stringify(notFound)}`);
+  console.log('✓ loadSessionContext not-found path');
+
+  // 8. loadSessionContext: invalid-uuid path
+  const invalid = await loadSessionContext('not-a-uuid');
+  if (invalid !== null) throw new Error(`loadSessionContext invalid-uuid: expected null, got ${JSON.stringify(invalid)}`);
+  console.log('✓ loadSessionContext invalid-uuid path');
 }
 
 async function cleanup(): Promise<string[]> {
