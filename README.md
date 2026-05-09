@@ -111,6 +111,7 @@ Mask Faceless CoHost/
 │   ├── personality.ts           # Mask's system prompt — THE BRAIN (Phase 1)
 │   ├── supabase.ts              # Typed DB client (schema deployed Phase 2b.1)
 │   ├── database.types.ts        # Generated Supabase types — DO NOT hand-edit (Phase 2b.1)
+│   ├── sessionContext.ts        # Loads per-session context for chat route (Phase 2b.2)
 │   ├── visualCommands.ts        # Parser for "show", "pull up", "play" (Phase 3)
 │   ├── activityCommands.ts      # Parser for "Mask, run Bull Bear" (Phase 3)
 │   └── modeStateMachine.ts      # Solo / Visual / Activity transitions (Phase 3)
@@ -127,7 +128,8 @@ Mask Faceless CoHost/
 ├── prompts/
 │   ├── claude-code-phase-1.md   # Used to kick off the build
 │   ├── claude-code-phase-2a.md  # Phase 2a kickoff
-│   └── claude-code-phase-2b1.md # Phase 2b.1 kickoff
+│   ├── claude-code-phase-2b1.md  # Phase 2b.1 kickoff
+│   └── claude-code-phase-2b18.md # Phase 2b.1.8 kickoff
 ├── scripts/
 │   └── smoke-test.ts            # End-to-end DB smoke test (Phase 2b.1)
 ├── supabase/

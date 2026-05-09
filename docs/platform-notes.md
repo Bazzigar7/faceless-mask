@@ -55,7 +55,7 @@
 ## dotenv (Node loader)
 
 ### Marketing tip injection (Phase 2b.1.7, 2026-05-09)
-- Recent `dotenv` versions inject a one-line "tip: ⤷ auth for agents [www.vestauth.com]" message on every `config()` call.
-- Cosmetic only. Doesn't affect env loading. Will appear unprompted in CI logs.
-- Silenceable via `dotenv.config({ path: '.env.local', debug: false })` — note the `debug: false` is what suppresses the tip on recent versions.
-- We left it on for now. If CI logs get noisy, flip it.
+- Recent `dotenv` versions inject a one-line marketing tip on every `config()` call. The prefix `◇ injected env (N) from .env.local // tip:` is stable; the tip portion that follows varies between loads — both the leading glyph and the text change.
+- Examples observed during the Mask build (not exhaustive — future loads will produce more): `⤷ auth for agents [www.vestauth.com]`, `◈ encrypted .env [www.dotenvx.com]`, `⌘ custom filepath { path: '/custom/path/.env' }`.
+- Cosmetic only. Doesn't affect env loading. Treat as routine output, not actionable.
+- Silenceable via `dotenv.config({ path: '.env.local', debug: false })` if it ever becomes load-bearing noise (CI log clutter, broken grep targets, etc.).
