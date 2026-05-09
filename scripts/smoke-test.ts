@@ -63,11 +63,11 @@ async function main() {
     .from('sessions')
     .select(
       `id, session_number, date, topic,
-       track:tracks (
+       track:tracks!inner (
          id, name, total_sessions,
-         cohort:cohorts (
+         cohort:cohorts!inner (
            id, name,
-           college:colleges ( id, name, city )
+           college:colleges!inner ( id, name, city )
          )
        )`,
     )
