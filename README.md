@@ -113,7 +113,6 @@ Mask Faceless CoHost/
 │   ├── database.types.ts        # Generated Supabase types — DO NOT hand-edit (Phase 2b.1)
 │   ├── visualCommands.ts        # Parser for "show", "pull up", "play" (Phase 3)
 │   ├── activityCommands.ts      # Parser for "Mask, run Bull Bear" (Phase 3)
-│   ├── memory.ts                # Cross-session memory layer (Phase 2)
 │   └── modeStateMachine.ts      # Solo / Visual / Activity transitions (Phase 3)
 ├── public/
 │   ├── mask-base.svg            # Mask + tuxedo body — canonical render, inlined in Mask.tsx (Phase 2a)
