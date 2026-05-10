@@ -2,6 +2,7 @@ import './_load-env';
 import { supabase } from '../lib/supabase';
 import * as crypto from 'node:crypto';
 import { loadSessionContext } from '../lib/sessionContext';
+import { formatSessionContext } from '../lib/formatSessionContext';
 
 const ids: {
   college: string | null;
@@ -104,6 +105,36 @@ async function main() {
   const invalid = await loadSessionContext('not-a-uuid');
   if (invalid !== null) throw new Error(`loadSessionContext invalid-uuid: expected null, got ${JSON.stringify(invalid)}`);
   console.log('✓ loadSessionContext invalid-uuid path');
+
+  // 9. formatSessionContext: assert against the loaded context
+  if (!happy) throw new Error('section 9 precondition: happy is null');
+  const formatted = formatSessionContext(happy);
+
+  if (!formatted.includes('What is blockchain?')) {
+    throw new Error('section 9: formatted output missing topic');
+  }
+  if (!formatted.includes('Blockchain Foundations')) {
+    throw new Error('section 9: formatted output missing track name');
+  }
+  if (!formatted.includes('GRD Spring 2026')) {
+    throw new Error('section 9: formatted output missing cohort name');
+  }
+  if (!formatted.includes('GRD College of Science')) {
+    throw new Error('section 9: formatted output missing college name');
+  }
+  if (!formatted.includes('session 1 of 6')) {
+    throw new Error('section 9: formatted output missing session position');
+  }
+  if (!formatted.includes('co-hosting with Baz')) {
+    throw new Error('section 9: formatted output missing opening line');
+  }
+  if (formatted.includes('Approved session brief')) {
+    throw new Error('section 9: formatted output should not include brief section when brief is null');
+  }
+
+  console.log('✓ formatSessionContext output:');
+  console.log(formatted);
+  console.log('✓ section 9 passed');
 }
 
 async function cleanup(): Promise<string[]> {
