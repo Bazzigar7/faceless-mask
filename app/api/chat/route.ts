@@ -3,6 +3,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import { MASK_SYSTEM_PROMPT } from "@/lib/personality";
 import { loadSessionContext, type SessionContext } from "@/lib/sessionContext";
 import { formatSessionContext } from "@/lib/formatSessionContext";
+import { writeTurn } from "@/lib/writeTurn";
 
 export const runtime = "nodejs";
 
@@ -18,6 +19,23 @@ async function loadSessionContextSafe(
   } catch (err) {
     console.error('[chat] Session context load failed, degrading to no-context:', err);
     return null;
+  }
+}
+
+/**
+ * Graceful-degrade wrapper around writeTurn. Logs and continues
+ * on failure — voice continuity beats persistence. Real errors
+ * surface in Vercel logs via the [chat] writeTurn failed prefix.
+ */
+async function writeTurnSafe(
+  sessionId: string,
+  role: 'user' | 'assistant',
+  content: string,
+): Promise<void> {
+  try {
+    await writeTurn(sessionId, role, content);
+  } catch (err) {
+    console.error('[chat] writeTurn failed (continuing):', err);
   }
 }
 
@@ -37,6 +55,10 @@ export async function POST(req: NextRequest) {
     sessionContext ? `loaded for session ${sessionId}` :
     `loader returned null for ${sessionId}`
   );
+
+  if (sessionId) {
+    await writeTurnSafe(sessionId, 'user', transcript);
+  }
 
   const systemBlocks: Array<{
     type: "text";
@@ -73,6 +95,13 @@ export async function POST(req: NextRequest) {
       console.log(
         `[chat] cache_read=${u.cache_read_input_tokens ?? 0} cache_create=${u.cache_creation_input_tokens ?? 0} input=${u.input_tokens} output=${u.output_tokens}`,
       );
+
+      if (sessionId) {
+        const assistantText = msg.content
+          .map(block => block.type === 'text' ? block.text : '')
+          .join('');
+        return writeTurnSafe(sessionId, 'assistant', assistantText);
+      }
     })
     .catch(() => {});
 
