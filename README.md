@@ -112,6 +112,7 @@ Mask Faceless CoHost/
 │   ├── supabase.ts              # Typed DB client (schema deployed Phase 2b.1)
 │   ├── database.types.ts        # Generated Supabase types — DO NOT hand-edit (Phase 2b.1)
 │   ├── sessionContext.ts        # Loads per-session context for chat route (Phase 2b.2)
+│   ├── formatSessionContext.ts # Renders SessionContext as block 2 prose for chat (Phase 2b.2)
 │   ├── visualCommands.ts        # Parser for "show", "pull up", "play" (Phase 3)
 │   ├── activityCommands.ts      # Parser for "Mask, run Bull Bear" (Phase 3)
 │   └── modeStateMachine.ts      # Solo / Visual / Activity transitions (Phase 3)
