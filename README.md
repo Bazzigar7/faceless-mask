@@ -166,6 +166,8 @@ That's a callback that wouldn't be possible without this structure.
 
 ## Pre-session approval flow
 
+Admin panel (/admin) manages sessions. Asset library and visual content management lives at /library in Phase 3.
+
 Baz never goes into a session blind. 15-30 minutes before each session, Baz opens the admin panel and sees:
 
 1. **Today's session card** — College / Cohort / Track / Session number / Topic
@@ -406,7 +408,7 @@ Account map (which email owns which key) lives in `~/Desktop/mask-accounts.txt`.
 - [x] 2b.1: Schema deployed, types generated ✅ shipped 2026-05-09
 - [x] 2b.2: Session context loading ✅ shipped 2026-05-10
 - [x] 2b.3: Transcript capture ✅ shipped 2026-05-10
-- [ ] 2b.4: Admin panel scaffold
+- [x] 2b.4: Admin panel scaffold ✅ shipped 2026-05-10
 - [ ] 2b.5: Pre-session approval flow
 - [ ] 2b.6: Memory recall
 
