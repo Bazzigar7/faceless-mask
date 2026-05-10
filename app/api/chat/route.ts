@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
 import { MASK_SYSTEM_PROMPT } from "@/lib/personality";
 import { loadSessionContext, type SessionContext } from "@/lib/sessionContext";
+import { formatSessionContext } from "@/lib/formatSessionContext";
 
 export const runtime = "nodejs";
 
@@ -37,17 +38,30 @@ export async function POST(req: NextRequest) {
     `loader returned null for ${sessionId}`
   );
 
+  const systemBlocks: Array<{
+    type: "text";
+    text: string;
+    cache_control: { type: "ephemeral" };
+  }> = [
+    {
+      type: "text",
+      text: MASK_SYSTEM_PROMPT,
+      cache_control: { type: "ephemeral" },
+    },
+  ];
+
+  if (sessionContext) {
+    systemBlocks.push({
+      type: "text",
+      text: formatSessionContext(sessionContext),
+      cache_control: { type: "ephemeral" },
+    });
+  }
+
   const stream = client.messages.stream({
     model: "claude-sonnet-4-6",
     max_tokens: 1024,
-    // TODO 2b.2.3: format block 2 from sessionContext when present
-    system: [
-      {
-        type: "text",
-        text: MASK_SYSTEM_PROMPT,
-        cache_control: { type: "ephemeral" },
-      },
-    ],
+    system: systemBlocks,
     messages: [{ role: "user", content: transcript }],
   });
 
