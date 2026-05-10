@@ -3,6 +3,7 @@ import { supabase } from '../lib/supabase';
 import * as crypto from 'node:crypto';
 import { loadSessionContext } from '../lib/sessionContext';
 import { formatSessionContext } from '../lib/formatSessionContext';
+import { writeTurn } from '../lib/writeTurn';
 
 const ids: {
   college: string | null;
@@ -135,10 +136,42 @@ async function main() {
   console.log('✓ formatSessionContext output:');
   console.log(formatted);
   console.log('✓ section 9 passed');
+
+  // 10. writeTurn: insert + read back two turns
+  if (!ids.session) throw new Error('section 10 precondition: ids.session not set');
+
+  await writeTurn(ids.session, 'user', 'test user transcript');
+  await writeTurn(ids.session, 'assistant', 'test assistant response');
+
+  const { data: turns, error: turnsError } = await supabase
+    .from('turns')
+    .select('role, content')
+    .eq('session_id', ids.session)
+    .order('created_at', { ascending: true });
+
+  if (turnsError) throw new Error(`section 10: turns query failed: ${turnsError.message}`);
+  if (!turns) throw new Error('section 10: turns query returned null');
+  if (turns.length !== 2) throw new Error(`section 10: expected 2 turns, got ${turns.length}`);
+  if (turns[0].role !== 'user') throw new Error(`section 10: turns[0].role expected 'user', got '${turns[0].role}'`);
+  if (turns[0].content !== 'test user transcript') throw new Error(`section 10: turns[0].content mismatch`);
+  if (turns[1].role !== 'assistant') throw new Error(`section 10: turns[1].role expected 'assistant', got '${turns[1].role}'`);
+  if (turns[1].content !== 'test assistant response') throw new Error(`section 10: turns[1].content mismatch`);
+  console.log('✓ section 10 passed');
 }
 
 async function cleanup(): Promise<string[]> {
   const failures: string[] = [];
+
+  if (ids.session) {
+    const { error: turnsError } = await supabase
+      .from('turns')
+      .delete()
+      .eq('session_id', ids.session);
+    if (turnsError) {
+      console.error('cleanup: turns delete failed:', turnsError);
+      failures.push(`turns delete: ${turnsError.message}`);
+    }
+  }
 
   if (ids.session) {
     const r = await supabase.from('sessions').delete().eq('id', ids.session);
