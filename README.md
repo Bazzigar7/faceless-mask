@@ -405,7 +405,7 @@ Account map (which email owns which key) lives in `~/Desktop/mask-accounts.txt`.
 ### Phase 2b — Admin + memory + database
 - [x] 2b.1: Schema deployed, types generated ✅ shipped 2026-05-09
 - [x] 2b.2: Session context loading ✅ shipped 2026-05-10
-- [ ] 2b.3: Transcript capture
+- [x] 2b.3: Transcript capture ✅ shipped 2026-05-10
 - [ ] 2b.4: Admin panel scaffold
 - [ ] 2b.5: Pre-session approval flow
 - [ ] 2b.6: Memory recall
