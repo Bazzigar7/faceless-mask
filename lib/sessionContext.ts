@@ -19,6 +19,8 @@ import { supabase } from './supabase';
 export type SessionContext = {
   sessionNumber: number | null;
   topic: string;
+  date: string;
+  trackId: string;
   brief: Record<string, unknown> | null;
   trackName: string;
   trackTotalSessions: number | null;
@@ -50,9 +52,9 @@ export async function loadSessionContext(
   const { data, error } = await supabase
     .from('sessions')
     .select(
-      `topic, session_number, brief,
+      `topic, session_number, date, brief,
        track:tracks!inner (
-         name, total_sessions,
+         id, name, total_sessions,
          cohort:cohorts!inner (
            name,
            college:colleges!inner ( name )
@@ -72,6 +74,8 @@ export async function loadSessionContext(
   return {
     sessionNumber: data.session_number,
     topic: data.topic,
+    date: data.date,
+    trackId: data.track.id,
     // brief is typed Json | null in the schema (Supabase's permissive
     // JSON type) but in practice we only ever write objects to it from
     // the approval flow (2b.5). Cast narrows the type for downstream
