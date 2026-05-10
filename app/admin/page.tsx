@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { listSessions } from "@/lib/listSessions";
 
 export default async function AdminPage() {
@@ -26,12 +27,36 @@ export default async function AdminPage() {
             <tbody>
               {sessions.map((s) => (
                 <tr key={s.id} className="border-b border-zinc-100 hover:bg-zinc-50">
-                  <td className="py-3 px-4">{new Date(s.date).toLocaleDateString()}</td>
-                  <td className="py-3 px-4">{s.collegeName}</td>
-                  <td className="py-3 px-4">{s.cohortName}</td>
-                  <td className="py-3 px-4">{s.trackName}</td>
-                  <td className="py-3 px-4">{s.sessionNumber ?? "-"}</td>
-                  <td className="py-3 px-4">{s.topic}</td>
+                  <td>
+                    <Link href={`/admin/${s.id}`} className="block py-3 px-4 text-zinc-900 hover:text-zinc-600">
+                      {new Date(s.date).toLocaleDateString()}
+                    </Link>
+                  </td>
+                  <td>
+                    <Link href={`/admin/${s.id}`} className="block py-3 px-4 text-zinc-900 hover:text-zinc-600">
+                      {s.collegeName}
+                    </Link>
+                  </td>
+                  <td>
+                    <Link href={`/admin/${s.id}`} className="block py-3 px-4 text-zinc-900 hover:text-zinc-600">
+                      {s.cohortName}
+                    </Link>
+                  </td>
+                  <td>
+                    <Link href={`/admin/${s.id}`} className="block py-3 px-4 text-zinc-900 hover:text-zinc-600">
+                      {s.trackName}
+                    </Link>
+                  </td>
+                  <td>
+                    <Link href={`/admin/${s.id}`} className="block py-3 px-4 text-zinc-900 hover:text-zinc-600">
+                      {s.sessionNumber ?? "-"}
+                    </Link>
+                  </td>
+                  <td>
+                    <Link href={`/admin/${s.id}`} className="block py-3 px-4 text-zinc-900 hover:text-zinc-600">
+                      {s.topic}
+                    </Link>
+                  </td>
                 </tr>
               ))}
             </tbody>
