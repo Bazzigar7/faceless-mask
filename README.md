@@ -414,6 +414,9 @@ Account map (which email owns which key) lives in `~/Desktop/mask-accounts.txt`.
   - [x] 2b.5.1: Picker UI + structured brief renderer ✅ shipped 2026-05-11
   - [x] 2b.5.2: Server-side validator ✅ shipped 2026-05-11
 - [x] 2b.6: Memory recall ✅ shipped 2026-05-12
+  - [x] 2b.6.1: loadPreviousSummary sibling + SessionContext extension ✅ shipped 2026-05-12
+  - [x] 2b.6.2: Formatter renders previousSummary at Option A slot ✅ shipped 2026-05-12
+  - [x] 2b.6.3: README closes Phase 2b.6 — tracker, prose, deferred WRITE ✅ shipped 2026-05-12
 
 ### Phase 3 — Stage view + assets + wake word
 - [ ] Asset library with tagging
