@@ -27,6 +27,7 @@ export type SessionContext = {
   trackTotalSessions: number | null;
   cohortName: string;
   collegeName: string;
+  previousSummary: string | null;
 };
 
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -72,6 +73,11 @@ export async function loadSessionContext(
   }
   if (!data) return null;
 
+  const previousSummary = await loadPreviousSummary(
+    data.track.id,
+    data.session_number,
+  );
+
   return {
     sessionNumber: data.session_number,
     topic: data.topic,
@@ -89,5 +95,54 @@ export async function loadSessionContext(
     trackTotalSessions: data.track.total_sessions,
     cohortName: data.track.cohort.name,
     collegeName: data.track.cohort.college.name,
+    previousSummary,
   };
+}
+
+/**
+ * Loads the immediately-prior session's summary text for cross-session
+ * memory recall — "last week we covered X, today Y" callbacks.
+ *
+ * "Prior" = same track, strictly-lower session_number, ordered DESC
+ * LIMIT 1. Sessions with NULL session_number are filtered out
+ * defensively so out-of-band rows (e.g. pilots, one-offs not part of
+ * a numbered series) don't accidentally rank as predecessors.
+ *
+ * @returns The previous session's summary string, or null when:
+ *   - currentSessionNumber is null (no ordering anchor)
+ *   - no prior session exists in this track (PostgREST PGRST116)
+ *   - prior session exists but its summary column is NULL
+ * All three null cases are intentionally indistinguishable to
+ * callers — all mean "no recall available, render no callback".
+ *
+ * @throws Re-throws any DB error other than not-found (network
+ * failure, permission, schema) so the chat route can log + degrade
+ * via loadSessionContextSafe rather than silently dropping recall.
+ *
+ * trackId is post-join trusted (sourced from loadSessionContext's
+ * inner-join on tracks); no UUID-regex defense applied. Garbage
+ * input would surface as a Supabase error and rethrow loudly.
+ */
+export async function loadPreviousSummary(
+  trackId: string,
+  currentSessionNumber: number | null,
+): Promise<string | null> {
+  if (currentSessionNumber === null) return null;
+
+  const { data, error } = await supabase
+    .from('sessions')
+    .select('summary')
+    .eq('track_id', trackId)
+    .not('session_number', 'is', null)
+    .lt('session_number', currentSessionNumber)
+    .order('session_number', { ascending: false })
+    .limit(1)
+    .single();
+
+  if (error?.code === 'PGRST116') return null;
+  if (error) {
+    console.error(error);
+    throw error;
+  }
+  return data?.summary ?? null;
 }
