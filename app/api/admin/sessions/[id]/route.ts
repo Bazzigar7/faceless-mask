@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { updateSession, type UpdateSessionInput } from "@/lib/updateSession";
 import { validateBrief } from "@/lib/banks/validateBrief";
+import { validateSummary } from "@/lib/validateSummary";
+import { UUID_REGEX } from "@/lib/uuid";
 
 export const runtime = "nodejs";
 
@@ -8,6 +10,13 @@ export async function PUT(
   req: NextRequest,
   { params }: { params: { id: string } },
 ) {
+  if (!UUID_REGEX.test(params.id)) {
+    return NextResponse.json(
+      { error: "id must be a valid UUID" },
+      { status: 400 },
+    );
+  }
+
   try {
     const body = (await req.json()) as Partial<UpdateSessionInput>;
 
@@ -29,11 +38,23 @@ export async function PUT(
       );
     }
 
+    const summaryValidation = validateSummary(body.summary ?? null);
+    if (!summaryValidation.ok) {
+      return NextResponse.json(
+        {
+          error: "Summary validation failed",
+          details: summaryValidation.errors,
+        },
+        { status: 400 },
+      );
+    }
+
     await updateSession(params.id, {
       sessionNumber: body.sessionNumber ?? null,
       topic: body.topic,
       date: body.date,
       brief: briefValidation.brief,
+      summary: summaryValidation.summary,
     });
 
     return NextResponse.json({ id: params.id });

@@ -1,4 +1,5 @@
 import { supabase } from './supabase';
+import { UUID_REGEX } from './uuid';
 import type { SessionBrief } from './banks/types';
 
 /**
@@ -28,9 +29,8 @@ export type SessionContext = {
   cohortName: string;
   collegeName: string;
   previousSummary: string | null;
+  summary: string | null;
 };
-
-const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 /**
  * Loads the per-session bundle Mask needs for today — topic plus
@@ -54,7 +54,7 @@ export async function loadSessionContext(
   const { data, error } = await supabase
     .from('sessions')
     .select(
-      `topic, session_number, date, brief,
+      `topic, session_number, date, brief, summary,
        track:tracks!inner (
          id, name, total_sessions,
          cohort:cohorts!inner (
@@ -96,6 +96,7 @@ export async function loadSessionContext(
     cohortName: data.track.cohort.name,
     collegeName: data.track.cohort.college.name,
     previousSummary,
+    summary: data.summary,
   };
 }
 

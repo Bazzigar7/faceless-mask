@@ -16,6 +16,7 @@ export type UpdateSessionInput = {
   topic: string;
   date: string;
   brief: SessionBrief | null;
+  summary: string | null;
 };
 
 export async function updateSession(
@@ -31,6 +32,7 @@ export async function updateSession(
       // brief is SessionBrief | null in our type but Supabase expects
       // Json — cast at the boundary. See createSession for context.
       brief: input.brief as Json,
+      summary: input.summary,
     })
     .eq('id', sessionId);
 

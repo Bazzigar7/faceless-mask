@@ -1,10 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createSession, type CreateSessionInput } from "@/lib/createSession";
 import { validateBrief } from "@/lib/banks/validateBrief";
+import { UUID_REGEX } from "@/lib/uuid";
 
 export const runtime = "nodejs";
-
-const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 export async function POST(req: NextRequest) {
   try {
