@@ -178,6 +178,17 @@ function DetailView({ session, sessionId }: { session: SessionContext; sessionId
           <h2 className="text-xl font-semibold mb-3">Brief</h2>
           <BriefRenderer brief={session.brief} />
         </div>
+
+        <div className="border-t border-zinc-200 pt-6 mt-6">
+          <h2 className="text-xl font-semibold mb-3">Summary</h2>
+          {session.summary === null ? (
+            <p className="italic text-zinc-500">No summary yet.</p>
+          ) : (
+            <div className="text-zinc-900 whitespace-pre-wrap">
+              {session.summary}
+            </div>
+          )}
+        </div>
       </div>
     </main>
   );
