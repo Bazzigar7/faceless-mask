@@ -6,6 +6,7 @@ import { formatSessionContext } from "@/lib/formatSessionContext";
 import { writeTurn } from "@/lib/writeTurn";
 
 export const runtime = "nodejs";
+export const maxDuration = 60;
 
 const client = new Anthropic();
 
