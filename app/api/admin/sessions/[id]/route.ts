@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { updateSession, type UpdateSessionInput } from "@/lib/updateSession";
+import { validateBrief } from "@/lib/banks/validateBrief";
 
 export const runtime = "nodejs";
 
@@ -17,11 +18,24 @@ export async function PUT(
       );
     }
 
+    const briefValidation = validateBrief(body.brief ?? null);
+    if (!briefValidation.ok) {
+      return NextResponse.json(
+        {
+          error: "Brief validation failed",
+          details: briefValidation.errors,
+        },
+        { status: 400 },
+      );
+    }
+
     await updateSession(params.id, {
       sessionNumber: body.sessionNumber ?? null,
       topic: body.topic,
       date: body.date,
-      brief: body.brief ?? null,
+      // Cast to the still-permissive public type — UpdateSessionInput.brief
+      // tightens to SessionBrief | null in 5.2.1's type-ripple work.
+      brief: briefValidation.brief as Record<string, unknown> | null,
     });
 
     return NextResponse.json({ id: params.id });

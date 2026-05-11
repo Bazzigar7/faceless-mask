@@ -53,11 +53,12 @@ export interface Activity {
 
 // Shape of sessions.brief once Phase 2b.5.1 picker UI lands.
 // All fields optional; the empty object {} is valid (renders nothing).
-// formatSessionContext consumes this shape via `as Partial<SessionBrief>`
-// at the runtime boundary — public types upstream (sessionContext.ts,
-// createSession.ts, updateSession.ts, API routes) keep the permissive
-// Record<string, unknown> | null until 2b.5.1.2 introduces server-side
-// validation.
+// SessionBrief is consumed via `as Partial<SessionBrief>` casts at runtime
+// boundaries (formatter, form, detail view) and via the typed result of
+// validateBrief() at the API write boundary. Public types upstream
+// (sessionContext.ts, createSession.ts, updateSession.ts, API routes)
+// keep the permissive Record<string, unknown> | null; type-level
+// tightening lands in 5.2.1.
 export interface SessionBrief {
   openerId?: string;
   activityIds?: string[];
