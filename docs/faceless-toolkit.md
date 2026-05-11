@@ -57,6 +57,11 @@
 - **Frequency**: 1st observation
 - **Notes**: `useLipSync` (lib/useLipSync.ts:23–37) and `useCurrentWord` (lib/useCurrentWord.ts:48–58) both walk `alignmentStoreRef` looking for the entry whose `[audioStartTime, audioStartTime + duration)` interval contains `audio.currentTime`. Identical logic, copy-pasted across two files. Pure function extraction (`lib/findActiveSentence.ts` taking store + t, returning entry-or-null) would dedupe cleanly. Both hooks would call it then do their respective inner work (`charToViseme` vs word lookup). Defer to a dedicated cleanup phase.
 
+- **Need**: Subtitle karaoke timing drifts ahead of audio — current-word highlight runs faster than what Mask actually speaks. Visible on longer Mask responses.
+- **Source**: 2026-05-11 smoke test for 2b.5.1.0 — Mt. Gox story turn against session 0...0004
+- **Frequency**: 1st explicit capture (may have existed since 2a.5 ship, just unnoticed on shorter test turns)
+- **Notes**: Surface is useCurrentWord.ts + wordSegments.ts + ElevenLabs alignment data. Possible causes: word-segment boundaries calculated from char-level alignment in a way that drifts on longer sentences; or audio.currentTime polled via requestAnimationFrame stalls behind playback. Investigate when next pass on subtitle code. Pairs with the findActiveSentence helper extraction already in the backlog.
+
 ---
 
 ## Categories to watch for
