@@ -18,6 +18,7 @@ type ExistingSession = {
   brief: SessionBrief | null;
   trackId: string;
   trackDisplayName: string;
+  summary: string | null;
 };
 
 type SessionFormProps = {
@@ -105,6 +106,7 @@ export default function SessionForm({ tracks, existing }: SessionFormProps) {
     if (parsed.kind === "legacy") return JSON.stringify(parsed.raw, null, 2);
     return "";
   });
+  const [summary, setSummary] = useState<string>(existing?.summary ?? "");
 
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -128,7 +130,7 @@ export default function SessionForm({ tracks, existing }: SessionFormProps) {
       date,
       sessionNumber: sessionNumber ? parseInt(sessionNumber, 10) : null,
       brief: Object.keys(brief).length > 0 ? brief : null,
-      ...(existing ? {} : { trackId }),
+      ...(existing ? { summary: summary || null } : { trackId }),
     };
 
     try {
@@ -338,6 +340,26 @@ export default function SessionForm({ tracks, existing }: SessionFormProps) {
           className="w-full border border-zinc-300 rounded px-3 py-2 min-h-32 font-mono text-sm"
         />
       </div>
+
+      {existing && (
+        <>
+          <div className="border-t border-zinc-200 my-6" />
+          <h3 className="text-lg font-semibold mb-4">Post-session summary</h3>
+
+          <div className="mb-4">
+            <label className="block text-sm font-medium text-zinc-700 mb-1">Summary</label>
+            <p className="text-xs text-zinc-500 mt-1 mb-2">
+              Written after the session — what Mask should recall when opening the next session.
+            </p>
+            <textarea
+              value={summary}
+              onChange={(e) => setSummary(e.target.value)}
+              placeholder="One or two lines. Skip if no summary yet."
+              className="w-full border border-zinc-300 rounded px-3 py-2 min-h-32 text-sm"
+            />
+          </div>
+        </>
+      )}
 
       {error && <p className="text-red-600 text-sm mb-4">{error}</p>}
 

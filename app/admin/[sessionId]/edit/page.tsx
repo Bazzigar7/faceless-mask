@@ -56,6 +56,7 @@ export default async function EditSessionPage({
             brief: session.brief,
             trackId: session.trackId,
             trackDisplayName: `${session.trackName} — ${session.cohortName} (${session.collegeName})`,
+            summary: session.summary,
           }}
         />
       </div>
