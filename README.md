@@ -51,7 +51,7 @@ The best teacher anyone remembers from school is the one who told funny stories 
 | Text-to-speech | ElevenLabs Multilingual v2 | Starter tier ($5/mo) active; Turbo v2.5 flip is unblocked, deferred to its own substep for the latency win. |
 | Wake word | Picovoice Porcupine | Free for personal use, runs in browser. Phase 3. |
 | Animation | SVG + Tailwind transitions + rAF | Framer Motion not installed; deferred until Mode 2/3 transitions are needed in Phase 3. |
-| Hosting | Vercel | Free tier, same workflow as faceless-hub |
+| Hosting | Vercel | Hobby tier; live at https://faceless-mask.vercel.app (shipped May 12, 2026) |
 
 ### Known reversals
 
@@ -395,7 +395,7 @@ Account map (which email owns which key) lives in `~/Desktop/mask-accounts.txt`.
 - [x] Personality file loading on every call with prompt caching verified
 - [x] First conversation in office (Mask responded in character on first test)
 - [ ] Latency under 2s — *currently ~3s. Starter tier is now active so Turbo v2.5 swap is unblocked; remaining latency wins are Turbo flip + streaming STT in Phase 3.*
-- [ ] Vercel deploy — *not deployed yet, local dev only*
+- [x] Vercel deploy — live at https://faceless-mask.vercel.app
 - [ ] Ship clip recorded and posted *(Recorded 2026-05-09; not posted yet.)*
 
 ### Phase 2a — Visible Mask + lip sync  ✅ shipped May 8, 2026
