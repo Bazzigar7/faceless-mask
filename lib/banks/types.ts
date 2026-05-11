@@ -50,3 +50,17 @@ export interface Activity {
   // Present only on "1-2-3 Cluster" — appended after the quoted name in the heading.
   headingSuffix?: string;
 }
+
+// Shape of sessions.brief once Phase 2b.5.1 picker UI lands.
+// All fields optional; the empty object {} is valid (renders nothing).
+// formatSessionContext consumes this shape via `as Partial<SessionBrief>`
+// at the runtime boundary — public types upstream (sessionContext.ts,
+// createSession.ts, updateSession.ts, API routes) keep the permissive
+// Record<string, unknown> | null until 2b.5.1.2 introduces server-side
+// validation.
+export interface SessionBrief {
+  openerId?: string;
+  activityIds?: string[];
+  storyIds?: string[];
+  customNotes?: string;
+}
