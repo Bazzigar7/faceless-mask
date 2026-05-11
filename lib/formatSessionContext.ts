@@ -59,6 +59,10 @@ export function formatSessionContext(ctx: SessionContext): string {
   const topicPhrase = `Today's topic is "${ctx.topic}".`;
   parts.push(`Today's session: ${positionPhrase} ${trackPhrase} ${cohortPhrase}. ${topicPhrase}`);
 
+  if (ctx.previousSummary !== null) {
+    parts.push(`Last session: ${ctx.previousSummary}`);
+  }
+
   parts.push(`How to use this context: when the session opens, acknowledge where they are in the curriculum (e.g. "Welcome back, last time we covered X, today we're on Y"). Reference earlier sessions when natural. Keep today's topic in focus — if a question drifts off-topic, you can engage briefly but bring it back. When today's brief primes a story or activity, treat its body as your reference — quote it tightly or riff off it, but don't substitute a different story or activity for one Baz approved.`);
 
   const parsed = parseBrief(ctx.brief);
