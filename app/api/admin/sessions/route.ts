@@ -40,9 +40,7 @@ export async function POST(req: NextRequest) {
       sessionNumber: body.sessionNumber ?? null,
       topic: body.topic,
       date: body.date,
-      // Cast to the still-permissive public type — CreateSessionInput.brief
-      // tightens to SessionBrief | null in 5.2.1's type-ripple work.
-      brief: briefValidation.brief as Record<string, unknown> | null,
+      brief: briefValidation.brief,
     });
 
     return NextResponse.json({ id }, { status: 201 });

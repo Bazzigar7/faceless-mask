@@ -1,5 +1,6 @@
 import { supabase } from './supabase';
 import type { Json } from './database.types';
+import type { SessionBrief } from './banks/types';
 
 /**
  * Inserts a new session row, returning the new session's id.
@@ -17,7 +18,7 @@ export type CreateSessionInput = {
   sessionNumber: number | null;
   topic: string;
   date: string;
-  brief: Record<string, unknown> | null;
+  brief: SessionBrief | null;
 };
 
 export async function createSession(input: CreateSessionInput): Promise<string> {
@@ -28,9 +29,9 @@ export async function createSession(input: CreateSessionInput): Promise<string> 
       session_number: input.sessionNumber,
       topic: input.topic,
       date: input.date,
-      // brief is Record<string, unknown> | null in our type but Supabase
-      // expects Json — cast at the boundary. Inputs come from API route's
-      // JSON.parse, which only produces JSON-compatible values.
+      // brief is SessionBrief | null in our type but Supabase expects
+      // Json — cast at the boundary. Validator at the API route
+      // guarantees the typed shape; this cast widens for the DB layer.
       brief: input.brief as Json,
     })
     .select('id')

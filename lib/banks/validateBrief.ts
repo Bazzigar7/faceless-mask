@@ -30,9 +30,21 @@ const RECOGNIZED_KEYS: ReadonlySet<string> = new Set([
 
 /**
  * Validate a candidate sessions.brief value at the API write
- * boundary. Accepts the permissive public type
- * (Record<string, unknown> | null) and returns a discriminated
- * ValidationResult.
+ * boundary.
+ *
+ * Parameter type is `unknown` (NOT SessionBrief | null, NOT
+ * Record<string, unknown> | null) — this is the function whose
+ * entire purpose is to narrow untrusted input (raw JSON.parse
+ * output from the HTTP body) into a typed SessionBrief. Asserting
+ * any stricter parameter type would contradict the validator's
+ * role. Internally, after `typeof brief !== "object"` and
+ * `Array.isArray(brief)` checks rule out non-object inputs, we
+ * narrow once via `const b = brief as Record<string, unknown>` to
+ * enable field-by-field access; the typeof check above guarantees
+ * the cast is safe at runtime. This is the standard "validate
+ * untrusted input" pattern — keep the parameter `unknown` so
+ * future-Claude-Code doesn't "fix" the signature to a typed input
+ * (which would defeat the validator).
  *
  * Rules (errors collected, not first-fail):
  *   - null → ok: true, brief: null (early return)
@@ -72,9 +84,7 @@ const RECOGNIZED_KEYS: ReadonlySet<string> = new Set([
  * verbatim on success — no coercion of {} to null, no field
  * stripping, no normalization. See 5.2.0 plan decision (i).
  */
-export function validateBrief(
-  brief: Record<string, unknown> | null,
-): ValidationResult {
+export function validateBrief(brief: unknown): ValidationResult {
   if (brief === null) {
     return { ok: true, brief: null };
   }
@@ -85,10 +95,16 @@ export function validateBrief(
     return { ok: false, errors: ["Brief must be an object or null"] };
   }
 
+  // After the null + non-object/array checks above, `brief` is some
+  // object that TS can't narrow further without an assertion. Cast
+  // to Record<string, unknown> for field-by-field access; the
+  // typeof check above guarantees this is safe at runtime.
+  const b = brief as Record<string, unknown>;
+
   const errors: string[] = [];
 
   // Unknown top-level keys first.
-  for (const key of Object.keys(brief)) {
+  for (const key of Object.keys(b)) {
     if (!RECOGNIZED_KEYS.has(key)) {
       errors.push(`Unknown brief field: "${key}"`);
     }
@@ -97,8 +113,8 @@ export function validateBrief(
   // Per-field validation in SessionBrief declaration order:
   // openerId → activityIds → storyIds → customNotes.
 
-  if ("openerId" in brief) {
-    const v = brief.openerId;
+  if ("openerId" in b) {
+    const v = b.openerId;
     if (typeof v !== "string") {
       errors.push("openerId must be a string");
     } else if (!OPENER_BANK.some((o) => o.id === v)) {
@@ -106,8 +122,8 @@ export function validateBrief(
     }
   }
 
-  if ("activityIds" in brief) {
-    const v = brief.activityIds;
+  if ("activityIds" in b) {
+    const v = b.activityIds;
     if (!Array.isArray(v)) {
       errors.push("activityIds must be an array");
     } else {
@@ -123,8 +139,8 @@ export function validateBrief(
     }
   }
 
-  if ("storyIds" in brief) {
-    const v = brief.storyIds;
+  if ("storyIds" in b) {
+    const v = b.storyIds;
     if (!Array.isArray(v)) {
       errors.push("storyIds must be an array");
     } else {
@@ -140,8 +156,8 @@ export function validateBrief(
     }
   }
 
-  if ("customNotes" in brief) {
-    const v = brief.customNotes;
+  if ("customNotes" in b) {
+    const v = b.customNotes;
     if (typeof v !== "string") {
       errors.push("customNotes must be a string");
     }
@@ -151,5 +167,5 @@ export function validateBrief(
     return { ok: false, errors };
   }
 
-  return { ok: true, brief: brief as SessionBrief };
+  return { ok: true, brief: b as SessionBrief };
 }

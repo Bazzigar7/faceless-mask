@@ -51,14 +51,16 @@ export interface Activity {
   headingSuffix?: string;
 }
 
-// Shape of sessions.brief once Phase 2b.5.1 picker UI lands.
-// All fields optional; the empty object {} is valid (renders nothing).
-// SessionBrief is consumed via `as Partial<SessionBrief>` casts at runtime
-// boundaries (formatter, form, detail view) and via the typed result of
-// validateBrief() at the API write boundary. Public types upstream
-// (sessionContext.ts, createSession.ts, updateSession.ts, API routes)
-// keep the permissive Record<string, unknown> | null; type-level
-// tightening lands in 5.2.1.
+// Shape of sessions.brief end-to-end (all fields optional, empty {}
+// is valid). SessionBrief is the declared type across all public
+// boundaries — SessionContext, CreateSessionInput, UpdateSessionInput,
+// SessionForm's ExistingSession, and the API route Partial<...> casts.
+// validateBrief() enforces this shape at the API write boundary;
+// parseBrief() classifies inputs into structured / legacy / empty at
+// the read boundary. Legacy DB content (any sessions.brief written
+// pre-5.2.0 validator, if any exist) can still defeat the loader's
+// `as SessionBrief` assertion at runtime; parseBrief's "legacy" branch
+// handles that case defensively.
 export interface SessionBrief {
   openerId?: string;
   activityIds?: string[];

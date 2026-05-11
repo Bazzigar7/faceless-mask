@@ -1,5 +1,6 @@
 import { supabase } from './supabase';
 import type { Json } from './database.types';
+import type { SessionBrief } from './banks/types';
 
 /**
  * Updates an existing session row by id. Track is intentionally
@@ -14,7 +15,7 @@ export type UpdateSessionInput = {
   sessionNumber: number | null;
   topic: string;
   date: string;
-  brief: Record<string, unknown> | null;
+  brief: SessionBrief | null;
 };
 
 export async function updateSession(
@@ -27,8 +28,8 @@ export async function updateSession(
       session_number: input.sessionNumber,
       topic: input.topic,
       date: input.date,
-      // brief is Record<string, unknown> | null in our type but Supabase
-      // expects Json — cast at the boundary. See createSession for context.
+      // brief is SessionBrief | null in our type but Supabase expects
+      // Json — cast at the boundary. See createSession for context.
       brief: input.brief as Json,
     })
     .eq('id', sessionId);

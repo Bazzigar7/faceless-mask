@@ -33,9 +33,7 @@ export async function PUT(
       sessionNumber: body.sessionNumber ?? null,
       topic: body.topic,
       date: body.date,
-      // Cast to the still-permissive public type — UpdateSessionInput.brief
-      // tightens to SessionBrief | null in 5.2.1's type-ripple work.
-      brief: briefValidation.brief as Record<string, unknown> | null,
+      brief: briefValidation.brief,
     });
 
     return NextResponse.json({ id: params.id });

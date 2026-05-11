@@ -1,4 +1,5 @@
 import { supabase } from './supabase';
+import type { SessionBrief } from './banks/types';
 
 /**
  * SessionContext is the per-session bundle Mask receives when a session
@@ -21,7 +22,7 @@ export type SessionContext = {
   topic: string;
   date: string;
   trackId: string;
-  brief: Record<string, unknown> | null;
+  brief: SessionBrief | null;
   trackName: string;
   trackTotalSessions: number | null;
   cohortName: string;
@@ -77,12 +78,13 @@ export async function loadSessionContext(
     date: data.date,
     trackId: data.track.id,
     // brief is typed Json | null in the schema (Supabase's permissive
-    // JSON type) but in practice we only ever write objects to it from
-    // the approval flow (2b.5). Cast narrows the type for downstream
-    // consumers.
+    // JSON type), but the 2b.5.2 validator guarantees writes conform
+    // to SessionBrief. Cast narrows to that typed shape for downstream
+    // consumers; runtime-incorrect DB content (pre-validator legacy
+    // rows, if any exist) is handled by parseBrief's "legacy" branch.
     brief: data.brief === null
       ? null
-      : (data.brief as Record<string, unknown>),
+      : (data.brief as SessionBrief),
     trackName: data.track.name,
     trackTotalSessions: data.track.total_sessions,
     cohortName: data.track.cohort.name,

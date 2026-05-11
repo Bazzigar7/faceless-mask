@@ -15,7 +15,7 @@ type ExistingSession = {
   sessionNumber: number | null;
   topic: string;
   date: string;
-  brief: Record<string, unknown> | null;
+  brief: SessionBrief | null;
   trackId: string;
   trackDisplayName: string;
 };
@@ -71,7 +71,7 @@ export default function SessionForm({ tracks, existing }: SessionFormProps) {
   // useState initializers below. ParsedBrief discriminated union narrows
   // cleanly via parsed.kind === "structured" | "legacy" | "empty".
   const parsed: ParsedBrief = existing?.brief
-    ? parseBrief(existing.brief as Record<string, unknown>)
+    ? parseBrief(existing.brief)
     : { kind: "empty" };
 
   const [topic, setTopic] = useState(existing?.topic ?? "");

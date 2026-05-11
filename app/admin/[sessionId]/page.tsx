@@ -5,6 +5,7 @@ import { parseBrief } from "@/lib/banks/parseBrief";
 import { OPENER_BANK } from "@/lib/banks/openers";
 import { ACTIVITY_BANK } from "@/lib/banks/activities";
 import { STORY_BANK } from "@/lib/banks/stories";
+import type { SessionBrief } from "@/lib/banks/types";
 
 // Opt out of Server Component fetch caching — admin pages must
 // always reflect the latest DB state. noStore() in the body busts
@@ -27,7 +28,7 @@ function DetailField({ label, value }: { label: string; value: string }) {
   );
 }
 
-function BriefRenderer({ brief }: { brief: Record<string, unknown> | null }) {
+function BriefRenderer({ brief }: { brief: SessionBrief | null }) {
   const parsed = parseBrief(brief);
 
   if (parsed.kind === "empty") {

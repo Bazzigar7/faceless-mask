@@ -8,11 +8,13 @@ import type { SessionBrief } from "./types";
  *
  *   - "structured": brief carries at least one SessionBrief key
  *     (openerId / activityIds / storyIds / customNotes). data is
- *     the same object cast to Partial<SessionBrief> for type-safe
+ *     the same value typed as Partial<SessionBrief> for type-safe
  *     field access by consumers.
- *   - "legacy": brief is a non-null object without any of those
- *     keys. raw is the original object (callers typically
- *     JSON.stringify it for opaque rendering).
+ *   - "legacy": brief is a non-null value that doesn't fit the
+ *     structured shape at runtime. raw is the original runtime
+ *     value typed as unknown — the legacy branch is only reachable
+ *     when a type assertion at the read boundary turned out to be
+ *     a lie. Consumers JSON.stringify it for opaque rendering.
  *   - "empty": brief is null.
  *
  * Defensive against malformed inputs: Array.isArray guards on
@@ -23,7 +25,7 @@ import type { SessionBrief } from "./types";
  */
 export type ParsedBrief =
   | { kind: "structured"; data: Partial<SessionBrief> }
-  | { kind: "legacy"; raw: Record<string, unknown> }
+  | { kind: "legacy"; raw: unknown }
   | { kind: "empty" };
 
 /**
@@ -44,6 +46,14 @@ export type ParsedBrief =
  *   42 (number)       | true && undefined>0 → false    | false
  *   {} (object)       | true && undefined>0 → false    | false
  *
+ * Note (post-5.2.1): the type system now blocks malformed inputs
+ * at parseBrief's call sites (SessionContext.brief,
+ * ExistingSession.brief all typed SessionBrief | null). The table
+ * above documents runtime-fallback behavior for the one boundary
+ * where a type assertion lies — the loader's `as SessionBrief`
+ * cast against pre-validator legacy DB rows — so parseBrief stays
+ * defensively correct even when types lie.
+ *
  * For valid SessionBrief inputs the two predicates produce
  * identical classifications. For malformed inputs (a non-array
  * landing in activityIds or storyIds) parseBrief routes safely to
@@ -51,16 +61,15 @@ export type ParsedBrief =
  * structured path. Same tightening applies to storyIds.
  */
 export function parseBrief(
-  brief: Record<string, unknown> | null,
+  brief: SessionBrief | null,
 ): ParsedBrief {
   if (brief === null) return { kind: "empty" };
-  const b = brief as Partial<SessionBrief>;
   const hasStructured =
-    b.openerId !== undefined ||
-    (Array.isArray(b.activityIds) && b.activityIds.length > 0) ||
-    (Array.isArray(b.storyIds) && b.storyIds.length > 0) ||
-    b.customNotes !== undefined;
+    brief.openerId !== undefined ||
+    (Array.isArray(brief.activityIds) && brief.activityIds.length > 0) ||
+    (Array.isArray(brief.storyIds) && brief.storyIds.length > 0) ||
+    brief.customNotes !== undefined;
   return hasStructured
-    ? { kind: "structured", data: b }
+    ? { kind: "structured", data: brief }
     : { kind: "legacy", raw: brief };
 }
