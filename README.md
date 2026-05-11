@@ -83,7 +83,7 @@ The stack above reflects what's actually running. Two layers got pivoted during 
 
 ## Folder structure
 
-Reflects Phase 1 + 2a as shipped. Phase 2b+ files are forward-looking.
+Reflects Phase 1 + 2a + 2b as shipped. Phase 3+ files are forward-looking.
 
 ```
 Mask Faceless CoHost/
@@ -285,7 +285,7 @@ The 2s target is non-negotiable for live classroom sessions. Phase 1 demoability
 
 Schema below is the Phase 2b deployment target. Phase 1 has the Supabase client connected; Phase 2b.1 deploys the schema and generates types.
 
-Memory layer for cross-session callbacks is deferred — `sessions.summary` carries the per-session recap, which is enough for V1.
+Memory layer for cross-session callbacks lives in `sessions.summary` (text). 2b.6 wires the read + render path; the writer is manual via Supabase dashboard in V1 — see Deferred decisions for the auto-writer path.
 
 `brief` stores the approved session prep as JSONB. Current shape (`SessionBrief`, locked in 2b.5.1): `{ openerId?, activityIds?, storyIds?, customNotes? }` — string IDs reference entries in `lib/banks/*.ts`, plus free-form `customNotes` prose. All fields optional; empty object is valid. Legacy free-form briefs (any other shape) still render via JSON dump in formatter + detail view as a transitional bridge; 2b.5.2 server validator now blocks new legacy-shape writes; rendering fallback stays in code as defensive bridge for any pre-validator DB rows.
 
@@ -413,7 +413,7 @@ Account map (which email owns which key) lives in `~/Desktop/mask-accounts.txt`.
   - [x] 2b.5.0: Banks extracted to lib/banks/ ✅ shipped 2026-05-11
   - [x] 2b.5.1: Picker UI + structured brief renderer ✅ shipped 2026-05-11
   - [x] 2b.5.2: Server-side validator ✅ shipped 2026-05-11
-- [ ] 2b.6: Memory recall
+- [x] 2b.6: Memory recall ✅ shipped 2026-05-12
 
 ### Phase 3 — Stage view + assets + wake word
 - [ ] Asset library with tagging
@@ -469,6 +469,26 @@ Mask's build is content. Each phase ships at least one X post + one short clip.
 - Student-facing tools (script writer, video helper, captions, campaign briefs, personal Mask access between sessions). Explicitly out of V1. Capture ideas in `faceless-toolkit.md` based on real session observations. Build as a separate product after Phase 5 ships. Mask V1 is a co-host, not a Swiss Army knife.
 
 V1 is for one user (Baz) running sessions at GRD. Everything else comes after we prove the model.
+
+---
+
+## Deferred decisions
+
+Items that are part of V1 by design but have a known follow-up path. Not the same as "What's NOT in V1" — these are explicitly half-shipped, with the rest deferred until evidence warrants the next move.
+
+### Auto-summary writer (Phase 2b.6)
+
+`sessions.summary` is read at session-load time and rendered into Mask's context as "Last session: …" callbacks. The READER + RENDER sides shipped in 2b.6.1 and 2b.6.2. The WRITER is currently manual — Baz types the recap into the Supabase dashboard after each session.
+
+Three candidate shapes for an auto-writer, all viable from the existing chat-route architecture (the `finalMessage().then` post-stream hook is the natural extension point):
+
+1. **Per-turn**: every assistant turn updates `sessions.summary` to a rolling recap. Cheapest infra, highest cost (extra Claude call per turn or summarize-from-current-turn inline).
+2. **End-of-session**: a "session ended" event triggers a one-shot summarizer that reads the full `turns` table and writes summary once. Cheaper at runtime, but requires defining "session end" — nothing in the chat-route or UI signals it today.
+3. **On-next-load**: when session N loads, if session N-1's `summary` is NULL but its `turns` rows exist, summarize on-the-fly and backfill. Self-healing, but the read path becomes write-capable (subtle trust/idempotence concerns).
+
+Reconsider triggers:
+- Baz tires of manual entry (volume signal — likely once cohort count or session frequency makes manual untenable)
+- Mask Licensing requires per-tenant auto-summary (V2 product signal — multi-tenant means manual doesn't scale)
 
 ---
 
