@@ -285,7 +285,7 @@ The 2s target is non-negotiable for live classroom sessions. Phase 1 demoability
 
 Schema below is the Phase 2b deployment target. Phase 1 has the Supabase client connected; Phase 2b.1 deploys the schema and generates types.
 
-Memory layer for cross-session callbacks lives in `sessions.summary` (text). 2b.6 wires the read + render path; the writer is manual via Supabase dashboard in V1 — see Deferred decisions for the auto-writer path.
+Memory layer for cross-session callbacks lives in `sessions.summary` (text). 2b.6 wires the read + render path; 2c.1 ships the manual writer UI (admin panel edit form) — see Deferred decisions for the auto-writer path.
 
 `brief` stores the approved session prep as JSONB. Current shape (`SessionBrief`, locked in 2b.5.1): `{ openerId?, activityIds?, storyIds?, customNotes? }` — string IDs reference entries in `lib/banks/*.ts`, plus free-form `customNotes` prose. All fields optional; empty object is valid. Legacy free-form briefs (any other shape) still render via JSON dump in formatter + detail view as a transitional bridge; 2b.5.2 server validator now blocks new legacy-shape writes; rendering fallback stays in code as defensive bridge for any pre-validator DB rows.
 
@@ -418,6 +418,12 @@ Account map (which email owns which key) lives in `~/Desktop/mask-accounts.txt`.
   - [x] 2b.6.2: Formatter renders previousSummary at Option A slot ✅ shipped 2026-05-12
   - [x] 2b.6.3: README closes Phase 2b.6 — tracker, prose, deferred WRITE ✅ shipped 2026-05-12
 
+### Phase 2c — Memory writer UI
+- [x] 2c.1: Admin panel post-session summary field ✅ shipped 2026-05-12
+  - [x] 2c.1.1: validateSummary + SessionContext.summary + PUT route write path ✅ shipped 2026-05-12
+  - [x] 2c.1.2: SessionForm Post-session summary textarea at Slot A ✅ shipped 2026-05-12
+  - [x] 2c.1.3: Detail view Summary section at slot α ✅ shipped 2026-05-12
+
 ### Phase 3 — Stage view + assets + wake word
 - [ ] Asset library with tagging
 - [ ] Visual command parser
@@ -481,7 +487,7 @@ Items that are part of V1 by design but have a known follow-up path. Not the sam
 
 ### Auto-summary writer (Phase 2b.6)
 
-`sessions.summary` is read at session-load time and rendered into Mask's context as "Last session: …" callbacks. The READER + RENDER sides shipped in 2b.6.1 and 2b.6.2. The WRITER is currently manual — Baz types the recap into the Supabase dashboard after each session.
+`sessions.summary` is read at session-load time and rendered into Mask's context as "Last session: …" callbacks. The READER + RENDER sides shipped in 2b.6.1 and 2b.6.2. The WRITER is currently manual — Baz types the recap into the admin panel's per-session edit form (shipped 2c.1, 2026-05-12). The auto-writer path stays deferred.
 
 Three candidate shapes for an auto-writer, all viable from the existing chat-route architecture (the `finalMessage().then` post-stream hook is the natural extension point):
 
