@@ -409,7 +409,7 @@ Account map (which email owns which key) lives in `~/Desktop/mask-accounts.txt`.
 - [x] 2b.2: Session context loading ✅ shipped 2026-05-10
 - [x] 2b.3: Transcript capture ✅ shipped 2026-05-10
 - [x] 2b.4: Admin panel scaffold ✅ shipped 2026-05-10
-- [ ] 2b.5: Pre-session approval flow
+- [x] 2b.5: Pre-session approval flow ✅ shipped 2026-05-11
   - [x] 2b.5.0: Banks extracted to lib/banks/ ✅ shipped 2026-05-11
   - [x] 2b.5.1: Picker UI + structured brief renderer ✅ shipped 2026-05-11
   - [x] 2b.5.2: Server-side validator ✅ shipped 2026-05-11
