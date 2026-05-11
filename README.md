@@ -287,7 +287,7 @@ Schema below is the Phase 2b deployment target. Phase 1 has the Supabase client 
 
 Memory layer for cross-session callbacks is deferred — `sessions.summary` carries the per-session recap, which is enough for V1.
 
-`brief` stores the approved session prep as JSONB. Current shape (`SessionBrief`, locked in 2b.5.1): `{ openerId?, activityIds?, storyIds?, customNotes? }` — string IDs reference entries in `lib/banks/*.ts`, plus free-form `customNotes` prose. All fields optional; empty object is valid. Legacy free-form briefs (any other shape) still render via JSON dump in formatter + detail view as a transitional bridge; 2b.5.2 server validator will retire that path.
+`brief` stores the approved session prep as JSONB. Current shape (`SessionBrief`, locked in 2b.5.1): `{ openerId?, activityIds?, storyIds?, customNotes? }` — string IDs reference entries in `lib/banks/*.ts`, plus free-form `customNotes` prose. All fields optional; empty object is valid. Legacy free-form briefs (any other shape) still render via JSON dump in formatter + detail view as a transitional bridge; 2b.5.2 server validator now blocks new legacy-shape writes; rendering fallback stays in code as defensive bridge for any pre-validator DB rows.
 
 ```sql
 -- Colleges
@@ -412,7 +412,7 @@ Account map (which email owns which key) lives in `~/Desktop/mask-accounts.txt`.
 - [ ] 2b.5: Pre-session approval flow
   - [x] 2b.5.0: Banks extracted to lib/banks/ ✅ shipped 2026-05-11
   - [x] 2b.5.1: Picker UI + structured brief renderer ✅ shipped 2026-05-11
-  - [ ] 2b.5.2: Server-side validator
+  - [x] 2b.5.2: Server-side validator ✅ shipped 2026-05-11
 - [ ] 2b.6: Memory recall
 
 ### Phase 3 — Stage view + assets + wake word
