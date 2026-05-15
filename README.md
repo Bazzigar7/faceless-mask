@@ -83,63 +83,23 @@ The stack above reflects what's actually running. Two layers got pivoted during 
 
 ## Folder structure
 
-Reflects Phase 1 + 2a + 2b as shipped. Phase 3+ files are forward-looking.
+The shipped file tree is maintained as ground truth in the repo itself. To inspect:
 
+```bash
+find app/ components/ lib/ docs/ supabase/ scripts/ -type f -not -path '*/node_modules/*'
 ```
-Mask Faceless CoHost/
-├── app/
-│   ├── page.tsx                 # Push-to-talk UI (Phase 1). Becomes stage view in Phase 3.
-│   ├── layout.tsx
-│   ├── admin/page.tsx           # Pre-session brief + approval panel (Phase 2)
-│   ├── library/page.tsx         # Asset library manager (Phase 3)
-│   ├── tracks/page.tsx          # Curriculum + cohort manager (Phase 2)
-│   └── api/
-│       ├── stt/route.ts         # Whisper STT (was Deepgram — see Known reversals)
-│       ├── chat/route.ts        # Claude API endpoint with system prompt + caching
-│       ├── tts/route.ts         # ElevenLabs Multilingual v2 (Starter active; Turbo v2.5 flip pending its own substep)
-│       └── session/route.ts     # Session CRUD + memory (Phase 2)
-├── components/
-│   ├── VoiceLoop.tsx            # Orchestrates STT → chat → TTS (Phase 1)
-│   ├── StatusIndicator.tsx      # idle / listening / thinking / speaking (Phase 1)
-│   ├── Mask.tsx                 # Animated mask SVG (Phase 2)
-│   ├── Stage.tsx                # Asset rendering area (Phase 3)
-│   ├── StageLayout.tsx          # Adaptive layout controller (Phase 3)
-│   ├── ActivityRunner.tsx       # Big-text activity display (Phase 3)
-│   ├── Subtitles.tsx            # Live subtitle rendering (Phase 2)
-│   └── Starfield.tsx            # Animated background (Phase 2)
-├── lib/
-│   ├── personality.ts           # Mask's system prompt — THE BRAIN (Phase 1)
-│   ├── supabase.ts              # Typed DB client (schema deployed Phase 2b.1)
-│   ├── database.types.ts        # Generated Supabase types — DO NOT hand-edit (Phase 2b.1)
-│   ├── sessionContext.ts        # Loads per-session context for chat route (Phase 2b.2)
-│   ├── formatSessionContext.ts # Renders SessionContext as block 2 prose for chat (Phase 2b.2)
-│   ├── visualCommands.ts        # Parser for "show", "pull up", "play" (Phase 3)
-│   ├── activityCommands.ts      # Parser for "Mask, run Bull Bear" (Phase 3)
-│   └── modeStateMachine.ts      # Solo / Visual / Activity transitions (Phase 3)
-├── public/
-│   ├── mask-base.svg            # Mask + tuxedo body — canonical render, inlined in Mask.tsx (Phase 2a)
-│   ├── mask-eye-holes.svg       # Eye cutout shapes — punched via SVG <mask> (Phase 2a)
-│   ├── mask-head.svg            # Head-only crop — reserved for Mode 2/3 in Phase 3
-│   └── mask-lips.svg            # Six viseme cutout shapes (rest, closed, open-a/e/o/u) (Phase 2a)
-├── docs/
-│   ├── faceless-edtech-strategy.md
-│   ├── faceless-toolkit.md
-│   ├── curriculum-ideas.md      # API keys topic captured
-│   └── platform-notes.md        # Operational gotchas (CLI quirks, edge cases)
-├── prompts/
-│   ├── claude-code-phase-1.md   # Used to kick off the build
-│   ├── claude-code-phase-2a.md  # Phase 2a kickoff
-│   ├── claude-code-phase-2b1.md  # Phase 2b.1 kickoff
-│   └── claude-code-phase-2b18.md # Phase 2b.1.8 kickoff
-├── scripts/
-│   └── smoke-test.ts            # End-to-end DB smoke test (Phase 2b.1)
-├── supabase/
-│   ├── config.toml              # CLI config (Phase 2b.1)
-│   └── migrations/              # SQL migrations applied via `supabase db push` (Phase 2b.1)
-├── .env.local                   # gitignored
-├── .env.local.example
-└── README.md                    # This file
-```
+
+For what's architecturally where:
+- `app/` — Next.js App Router pages and API routes. `/` is the voice-loop stage. `/admin/*` is the session/track/cohort admin panel (gated by Basic Auth middleware).
+- `components/` — UI primitives. VoiceLoop orchestrates the STT → chat → TTS pipeline. Mask renders the animated face. Subtitles renders the karaoke bar.
+- `lib/` — pure helpers, hooks, and the personality prompt. Includes the prompt-cache wiring (formatSessionContext, sessionContext), the alignment/viseme primitives (findActiveSentence, useLipSync, useCurrentWord, visemeMapping, wordSegments), Supabase client + types, and the brief-bank parser system under lib/banks/.
+- `docs/` — strategy, polish-backlog, curriculum-ideas. Read these to understand company context and what's pending.
+- `supabase/` — migrations (3 deployed: initial_schema, test_session_seed, turns_table).
+- `scripts/` — smoke tests + the env loader.
+- `prompts/` — historical Claude Code prompts used to kick off each phase. Read-only archive.
+- `middleware.ts` — root-level Next.js middleware. Basic Auth gate on /admin and /api/admin only (Phase 3.1.2.1).
+
+Forward-looking files not yet built (Phase 3+): stage view components, visual command parser, wake word integration, asset library manager. See Build Phases below for the sequencing.
 
 Note: `supabase/seed.sql` is not present. Supabase CLI v2.98+ no longer auto-creates it on `supabase init`. Schema lives in `migrations/`; we don't need a seed file.
 
@@ -283,7 +243,7 @@ The 2s target is non-negotiable for live classroom sessions. Phase 1 demoability
 
 ## Database schema
 
-Schema below is the Phase 2b deployment target. Phase 1 has the Supabase client connected; Phase 2b.1 deploys the schema and generates types.
+Schema below was deployed via 3 migrations (initial_schema, test_session_seed, turns_table) across Phase 2b.1 + 2b.3. Types generated and committed to lib/database.types.ts.
 
 Memory layer for cross-session callbacks lives in `sessions.summary` (text). 2b.6 wires the read + render path; 2c.1 ships the manual writer UI (admin panel edit form) — see Deferred decisions for the auto-writer path.
 
@@ -358,7 +318,7 @@ create table asset_usage (
 );
 ```
 
-**Row-level security:** RLS is disabled on all tables in V1. Mask runs locally on a single user (Baz) with no public-facing API. When the admin route gets a password gate (V2 or when deployed publicly), RLS gets enabled with policies. This decision is documented in the migration file.
+**Row-level security:** RLS is disabled on all tables in V1. Mask is deployed publicly at faceless-mask.vercel.app since Phase 3.1.1 (2026-05-12), and /admin + /api/admin are gated by Basic Auth middleware since Phase 3.1.2.1 (2026-05-15). The single-operator posture remains — RLS gets enabled with per-user policies when Mask Licensing (V2) introduces multi-tenancy.
 
 ---
 
@@ -423,6 +383,17 @@ Account map (which email owns which key) lives in `~/Desktop/mask-accounts.txt`.
   - [x] 2c.1.1: validateSummary + SessionContext.summary + PUT route write path ✅ shipped 2026-05-12
   - [x] 2c.1.2: SessionForm Post-session summary textarea at Slot A ✅ shipped 2026-05-12
   - [x] 2c.1.3: Detail view Summary section at slot α ✅ shipped 2026-05-12
+
+### Phase 3.1 — Production deploy + voice-loop hygiene ✅
+
+Shipped May 12-15, 2026. Post-deploy hygiene work that doesn't block but makes the live product presentable.
+
+- [x] Phase 3.1.1 — Vercel Hobby deploy + maxDuration=60 on chat + tts routes (May 12, commit 868d5a1)
+- [x] Phase 3.1.2.1 — HTTP Basic Auth middleware gating /admin + /api/admin (May 15, commit 8dbc430)
+- [x] Phase 3.1.2.2 — Markdown suppression in personality.ts (May 15, commit f3707ee)
+- [x] Phase 3.1.2.3 — Verbosity observation captured to polish backlog (May 15, commit dfdf96a)
+- [x] Phase 3.1.2.4 — findActiveSentence helper extracted from useLipSync + useCurrentWord (May 15, commit bc82368)
+- [x] Phase 3.1.2.5 — Dead transcript/error UI removed from VoiceLoop (May 15, commit ba81b77)
 
 ### Phase 3 — Stage view + assets + wake word
 - [ ] Asset library with tagging

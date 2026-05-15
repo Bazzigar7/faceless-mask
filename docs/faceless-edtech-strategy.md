@@ -13,7 +13,7 @@ Four products that reinforce each other:
 | Product | Status | What it is |
 |---|---|---|
 | **Faceless Hub** | Live (in development) | Campus creator network — students earn from brand campaigns |
-| **Mask** | Designed, build pending | AI co-host that runs alongside Baz in college sessions |
+| **Mask** | Live; in polish (Phase 3.1) | AI co-host that runs alongside Baz in college sessions |
 | **Faceless Academy** | Concept stage | Free content + paid cohorts — courses sold online |
 | **Mask Licensing** | Future product | Sell Mask + syllabus + playbook to other colleges and educators |
 
