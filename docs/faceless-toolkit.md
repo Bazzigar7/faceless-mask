@@ -62,6 +62,11 @@
 - **Frequency**: 1st explicit capture (may have existed since 2a.5 ship, just unnoticed on shorter test turns)
 - **Notes**: Surface is useCurrentWord.ts + wordSegments.ts + ElevenLabs alignment data. Possible causes: word-segment boundaries calculated from char-level alignment in a way that drifts on longer sentences; or audio.currentTime polled via requestAnimationFrame stalls behind playback. Investigate when next pass on subtitle code. Pairs with the findActiveSentence helper extraction already in the backlog.
 
+- **Need**: Mask responses sometimes run too long for live classroom cadence. The energy drains, students disengage, and Mask undermines its own "energy co-host" role. Classroom needs short conversational beats, not paragraph-length monologues.
+- **Source**: 2026-05-15, own observation during Phase 3.1.2.2 / Tier 1.1 smoke (markdown suppression). 5/5 prompts returned clean markdown but several responses ran long enough to feel draggy in live-classroom imagination.
+- **Frequency**: 1st explicit observation, but two existing rules in personality.ts already nod at this concern as soft nudges that aren't fully firing — "Short sentences. You're on a speaker, not a textbox." (Voice and rhythm) and "Never lecture more than 90 seconds without engaging the room" (Hard rule #6 post-3.1.2.2 renumbering).
+- **Notes**: Lean fix: sharper rule with response-category length budgets (greeting / quick answer / explanation / story), generation-time tightening over post-processing truncation (truncation cuts audio mid-sentence). Needs its own smoke methodology — "did the response feel too long" is observational, not character-detectable like markdown. Personality-drift risk if rule is too aggressive (Mask becoming clipped/robotic instead of energetic-conversational); calibration matters. Defer to Tier 1.4 or its own Phase 3.1.2.X — not in scope for Tier 1.1 / 1.2 / 1.3.
+
 ---
 
 ## Categories to watch for
