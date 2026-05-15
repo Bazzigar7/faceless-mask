@@ -22,8 +22,6 @@ export default function VoiceLoop({
   sessionId?: string;
 } = {}) {
   const [status, setStatus] = useState<Status>("idle");
-  const [transcript, setTranscript] = useState("");
-  const [error, setError] = useState<string | null>(null);
 
   const recorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
@@ -189,8 +187,6 @@ export default function VoiceLoop({
 
   const runPipeline = useCallback(
     async (audioBlob: Blob) => {
-      setError(null);
-      setTranscript("");
       finishedChatRef.current = false;
       appendQueueRef.current = [];
       ttsQueueRef.current = Promise.resolve();
@@ -208,7 +204,6 @@ export default function VoiceLoop({
         });
         if (!sttRes.ok) throw new Error(`STT failed: ${sttRes.status}`);
         const { transcript: t } = (await sttRes.json()) as { transcript: string };
-        setTranscript(t);
         if (!t.trim()) {
           setStatus("idle");
           return;
@@ -249,13 +244,13 @@ export default function VoiceLoop({
             const cut = m.index + m[0].length;
             const sentence = buffer.slice(0, cut).trim();
             buffer = buffer.slice(cut);
-            if (sentence) ttsChunk(sentence, sentenceCounter++).catch((e) => setError(String(e)));
+            if (sentence) ttsChunk(sentence, sentenceCounter++).catch((e) => console.error("[VoiceLoop] TTS chunk failed", e));
           }
         }
 
         // Flush remaining buffer as final TTS chunk
         const tail = buffer.trim();
-        if (tail) ttsChunk(tail, sentenceCounter++).catch((e) => setError(String(e)));
+        if (tail) ttsChunk(tail, sentenceCounter++).catch((e) => console.error("[VoiceLoop] TTS chunk failed", e));
 
         // Wait for all TTS chunks to land in the buffer, then signal end of stream
         await ttsQueueRef.current;
@@ -283,7 +278,7 @@ export default function VoiceLoop({
           if (a.ended) resolve();
         });
       } catch (e) {
-        setError(e instanceof Error ? e.message : String(e));
+        console.error("[VoiceLoop] pipeline failed", e);
       } finally {
         setStatus("idle");
       }
@@ -318,7 +313,7 @@ export default function VoiceLoop({
       recorder.start();
       setStatus("listening");
     } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
+      console.error("[VoiceLoop] startRecording failed", e);
       setStatus("idle");
     }
   }, [runPipeline, status]);
@@ -360,20 +355,6 @@ export default function VoiceLoop({
       </button>
 
       <audio ref={audioRef} autoPlay />
-
-      <div className="hidden">
-        {transcript && (
-          <div className="w-full max-w-xl rounded-md bg-zinc-900/60 p-3 text-sm text-zinc-300">
-            <div className="text-xs uppercase tracking-wide text-zinc-500">You</div>
-            <div>{transcript}</div>
-          </div>
-        )}
-        {error && (
-          <div className="w-full max-w-xl rounded-md bg-red-950/60 p-3 text-sm text-red-200">
-            {error}
-          </div>
-        )}
-      </div>
     </div>
   );
 }
