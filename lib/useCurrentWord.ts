@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import type { RefObject } from 'react';
 import type { SentenceAlignment } from './types';
+import { findActiveSentence } from './findActiveSentence';
 
 export interface WordState {
   sentenceIndex: number | null;
@@ -47,15 +48,7 @@ export function useCurrentWord(
 
       if (audio && store && !audio.paused && !audio.ended) {
         const t = audio.currentTime;
-        let active: SentenceAlignment | null = null;
-        for (const entry of store) {
-          const ends = entry.alignment.character_end_times_seconds;
-          const sentenceEnd = entry.audioStartTime + (ends[ends.length - 1] ?? 0);
-          if (t >= entry.audioStartTime && t < sentenceEnd) {
-            active = entry;
-            break;
-          }
-        }
+        const active = findActiveSentence(t, store);
 
         if (active) {
           heldSentence = active;
