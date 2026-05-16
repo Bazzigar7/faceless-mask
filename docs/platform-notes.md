@@ -59,3 +59,33 @@
 - Examples observed during the Mask build (not exhaustive — future loads will produce more): `⤷ auth for agents [www.vestauth.com]`, `◈ encrypted .env [www.dotenvx.com]`, `⌘ custom filepath { path: '/custom/path/.env' }`.
 - Cosmetic only. Doesn't affect env loading. Treat as routine output, not actionable.
 - Silenceable via `dotenv.config({ path: '.env.local', debug: false })` if it ever becomes load-bearing noise (CI log clutter, broken grep targets, etc.).
+
+---
+
+## Postgres operational gotchas
+
+### `pg_get_functiondef()` errors on aggregate functions (Phase 3.3.1, 2026-05-17)
+- Audit queries that loop `pg_proc` unfiltered (e.g., "find any function whose body references table X") trip a Postgres error on the first built-in aggregate they hit: `array_agg is an aggregate function`.
+- Root cause: `pg_get_functiondef()` doesn't support aggregate functions; it errors instead of returning their definition. Postgres ships dozens of built-in aggregates (`array_agg`, `string_agg`, `jsonb_agg`, etc.), so any unfiltered loop hits one early.
+- Fix: filter to plain functions via `WHERE p.prokind = 'f'`. Excludes `'a'` aggregates, `'w'` window functions, `'p'` procedures. Aggregates can't reference user tables in their definitions anyway, so the filter loses no audit signal.
+- Reusable for any future schema-tightening audit that needs to enumerate functions referencing a table. Source case: Phase 3.3.1 dependency preflight Q7 (commit 0a06cd5).
+
+---
+
+## Verification methodology
+
+### Byte-level dispute resolution for rendered file content (Phase 3.3.1, 2026-05-17)
+- Rendered views of file content — write-tool dialogs, chat-rendered `cat -n` output, screenshots, terminal scrollback — can mismatch byte reality at any layer of transport (wrap, copy-trim, markdown parse, font rendering).
+- When two parties in a review loop disagree about what bytes are on disk, do NOT act on either party's rendered view. Drop to hex inspection: `xxd <file>` or `sed -n 'Np' <file> | xxd` for a specific line.
+- Hex gives literal byte values (including line terminators, control characters, multi-byte UTF-8 sequences). Ground truth; rendered views are not.
+- Source case: Phase 3.3.1's verify gate (commit 0a06cd5). A chat-rendered `cat -n` inspection of line 9 appeared to show a missing semicolon at end of line. Hex showed `0x29 0x29 0x3b 0x0a` (`));\n`) — the semicolon was present. Acting on the rendered view would have introduced actual drift (line ending in `));;`).
+- Discipline pattern: when one party in the review is confident, the other party's job is to require byte-level proof rather than accept the assertion. Both directions of drift suspicion need the same resolution path.
+
+---
+
+## Browser
+
+### Safari microphone permission (Phase 3.3.1 smoke, 2026-05-17)
+- Safari requires per-site explicit microphone permission grant. First voice-loop press on a fresh Safari install prompts for mic access; declining or ignoring leaves the voice loop silently non-functional with no in-app error surface.
+- Chrome auto-grants for HTTPS sites in many flows; Safari does not.
+- Not a regression from any Mask-side change. Worth flagging in any future public-share / classroom-deploy docs.

@@ -94,7 +94,7 @@ For what's architecturally where:
 - `components/` — UI primitives. VoiceLoop orchestrates the STT → chat → TTS pipeline. Mask renders the animated face. Subtitles renders the karaoke bar.
 - `lib/` — pure helpers, hooks, and the personality prompt. Includes the prompt-cache wiring (formatSessionContext, sessionContext), the alignment/viseme primitives (findActiveSentence, useLipSync, useCurrentWord, visemeMapping, wordSegments), Supabase client + types, and the brief-bank parser system under lib/banks/.
 - `docs/` — strategy, polish-backlog, curriculum-ideas. Read these to understand company context and what's pending.
-- `supabase/` — migrations (3 deployed: initial_schema, test_session_seed, turns_table).
+- `supabase/` — migrations (4 deployed: initial_schema, test_session_seed, turns_table, assets_tighten_and_seed).
 - `scripts/` — smoke tests + the env loader.
 - `prompts/` — historical Claude Code prompts used to kick off each phase. Read-only archive.
 - `middleware.ts` — root-level Next.js middleware. Basic Auth gate on /admin and /api/admin only (Phase 3.1.2.1).
@@ -243,7 +243,7 @@ The 2s target is non-negotiable for live classroom sessions. Phase 1 demoability
 
 ## Database schema
 
-Schema below was deployed via 3 migrations (initial_schema, test_session_seed, turns_table) across Phase 2b.1 + 2b.3. Types generated and committed to lib/database.types.ts.
+Schema below was deployed via 4 migrations (initial_schema, test_session_seed, turns_table, assets_tighten_and_seed) across Phase 2b.1 + 2b.3 + 3.3.1. Types generated and committed to lib/database.types.ts.
 
 Memory layer for cross-session callbacks lives in `sessions.summary` (text). 2b.6 wires the read + render path; 2c.1 ships the manual writer UI (admin panel edit form) — see Deferred decisions for the auto-writer path.
 
@@ -299,14 +299,16 @@ create table sessions (
 -- Asset library
 create table assets (
   id uuid primary key default gen_random_uuid(),
-  type text not null,
+  type text not null check (type in ('image', 'video')),
   url text,
   storage_path text,
-  tags text[],
+  tags text[] not null,
   alt_text text,
-  added_by text,
+  added_by text default 'baz',
   created_at timestamptz default now()
 );
+
+create index assets_tags_gin on assets using gin (tags);
 
 -- Session-asset usage
 create table asset_usage (
@@ -395,10 +397,26 @@ Shipped May 12-15, 2026. Post-deploy hygiene work that doesn't block but makes t
 - [x] Phase 3.1.2.4 — findActiveSentence helper extracted from useLipSync + useCurrentWord (May 15, commit bc82368)
 - [x] Phase 3.1.2.5 — Dead transcript/error UI removed from VoiceLoop (May 15, commit ba81b77)
 
-### Phase 3 — Stage view + assets + wake word
-- [ ] Asset library with tagging
-- [ ] Visual command parser
-- [ ] Stage view with fade transitions
+### Phase 3.3 — Stage View V1 (Solo + Visual modes)
+- [x] 3.3.1: Assets table tightened + seeded ✅ shipped 2026-05-17 (commit 0a06cd5)
+- [ ] 3.3.2: Stage tag parser + fuzzy asset matcher (lib/visualCommands.ts)
+- [ ] 3.3.3: Wire stage event channel via client-side parser in VoiceLoop
+- [ ] 3.3.4: Stage component + StageLayout + mode state machine
+- [ ] 3.3.5: Idle timeout + explicit hide for stage exit
+- [ ] 3.3.6: Replace placeholder assets with curated set (after 3.3.1-3.3.5 build is verified working)
+
+**Hard constraints during Phase 3.3** (relax after 3.3 ships):
+- `lib/personality.ts` — locked (controls voice-loop output)
+- `app/api/chat/route.ts` — locked per Path B decision in 3.3.1 (3.3.3 parses stage tags client-side, not via server stream change)
+- `app/api/stt/route.ts`, `app/api/tts/route.ts` — locked (voice-loop runtime)
+- `lib/useLipSync.ts`, `lib/charToViseme.ts`, `lib/findActiveSentence.ts` — locked (lip sync runtime)
+- `components/VoiceLoop.tsx` — additive only (new state + client parser; no removal of existing state or props)
+
+After Phase 3.3 closes, these files return to normal review-and-edit cadence; the lockout is specifically for the hackathon-judging window plus the duration of the Phase 3.3 substeps.
+
+### Phase 3 — remaining (post-3.3)
+- [ ] Phase 3.4 — Activity mode (Mode 3) — deferred per Phase 3.3 prompt
+- [ ] Asset upload UI (app/library/page.tsx)
 - [ ] Picovoice "Hey Mask" wake word
 - [ ] Streaming STT (revisit Deepgram or Whisper streaming)
 - [ ] Quiz generator from transcript
