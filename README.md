@@ -409,7 +409,7 @@ Shipped May 12-15, 2026. Post-deploy hygiene work that doesn't block but makes t
 - `lib/personality.ts` — locked (controls voice-loop output)
 - `app/api/chat/route.ts` — locked per Path B decision in 3.3.1 (3.3.3 parses stage tags client-side, not via server stream change)
 - `app/api/stt/route.ts`, `app/api/tts/route.ts` — locked (voice-loop runtime)
-- `lib/useLipSync.ts`, `lib/charToViseme.ts`, `lib/findActiveSentence.ts` — locked (lip sync runtime)
+- `lib/useLipSync.ts`, `lib/visemeMapping.ts`, `lib/findActiveSentence.ts` — locked (lip sync runtime)
 - `components/VoiceLoop.tsx` — additive only (new state + client parser; no removal of existing state or props)
 
 After Phase 3.3 closes, these files return to normal review-and-edit cadence; the lockout is specifically for the hackathon-judging window plus the duration of the Phase 3.3 substeps.
