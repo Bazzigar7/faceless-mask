@@ -18,3 +18,21 @@ export interface SentenceAlignment {
   alignment: AlignmentData;
   words?: WordSegment[];
 }
+
+// Stage / visual types — consumed by lib/visualCommands.ts (Phase 3.3.2)
+// and rendered into the VoiceLoop stage event channel in Phase 3.3.3.
+
+export type StageEvent =
+  | { action: 'show'; query: string }
+  | { action: 'hide' };
+
+export type Asset = {
+  id: string;
+  type: 'image' | 'video';
+  url: string;
+  storage_path: string | null;
+  tags: string[];
+  alt_text: string | null;
+  added_by: string;
+  created_at: string;
+};
