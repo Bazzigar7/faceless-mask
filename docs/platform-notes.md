@@ -93,6 +93,14 @@
 - Mitigation today: include `verify:prompt` + `verify:visual` in any pre-push sanity gate for commits that touch `lib/personality.ts`, `lib/banks/*`, `lib/visualCommands.ts`, or any snapshot/seed fixtures.
 - Future hygiene candidate: wire into a pre-push `git` hook or a Vercel build step so the contracts are enforced by the platform, not by memory.
 
+### Terminal output collapse threshold (Phase 3.3.3, 2026-05-20)
+- Claude Code's terminal client collapses bash output exceeding ~40 lines behind a "ctrl+o to expand" prompt. Collapsed content is visible in-terminal but NOT included when output is copied into a chat exchange — paste yields only the visible head + collapse marker, losing the rest.
+- Symptom: diff inspections of >40-line changes lose the tail; build/test outputs lose route summaries; verify scripts lose pass/fail tails.
+- Mitigation 1: pipe through `tail -N` (N=30 or 50) for build/test outputs that end with the summary line. Trades head verbosity for tail visibility.
+- Mitigation 2: pre-split diffs via `sed -n 'A,Bp'` into <40-line chunks with explicit STOP-between-chunks pauses, allowing copy-paste of each chunk before the next is generated.
+- Mitigation 3 (when a file is untracked, so `git diff` is empty): use `sed -n 'A,Bp' <file> | cat -n` to view a specific line range with line numbers renumbered to the range.
+- Source case: Phase 3.3.3 substep — encountered repeatedly during diff inspections of VoiceLoop.tsx (3 hunks, ~71-line cumulative diff). Each inspection used pre-split sed ranges to keep chunks under threshold.
+
 ---
 
 ## Browser
@@ -112,6 +120,12 @@
 - Fix: explicit `"target": "es2020"` (or higher) in `compilerOptions`. The codebase was already written assuming ES2020+ semantics — adding the field surfaces no behavior changes, only removes the TS2802 gate.
 - Alternative if you can't bump target: `"downlevelIteration": true` allows `for...of` over the iterables but emits more verbose code. Not needed for modern Next.js / Vercel runtimes.
 - Source case: Phase 3.3.2 commit [2] introduced the first project code that iterates `Set` and `matchAll()` results via `for...of` (in `lib/visualCommands.ts`). tsc errored TS2802 at Gate 4. Latent gap; older code happened to avoid these patterns. Fixed in commit 3d0d6ed by adding `"target": "es2020"`.
+
+### Hand-written types drift against generated types until first cross-boundary caller (Phase 3.3.3, 2026-05-20)
+- `lib/types.ts` carries hand-written types that claim shapes the DB CAN have but does NOT necessarily enforce. Supabase's `lib/database.types.ts` is generator-faithful to actual DB constraints. When the hand-written type is stricter than the generated type, the drift goes unnoticed until the first caller imports both and TypeScript performs the assignability check.
+- Structurally the same drift class as Phase 3.3.2's tsconfig `target` default (latent gap, surfaced when the first consumer used a new pattern — `for...of` over `Set` / `matchAll` for 3.3.2; cross-boundary type assignment for 3.3.3).
+- Source case: `Asset` (hand-written 3.3.2) claims `type: 'image' | 'video'`, `url: string`, `tags: string[]`, `added_by: string`, `created_at: string`. Generated types showed `type: string`, `url: string | null`, `tags: string[] | null`, `added_by: string | null`, `created_at: string | null`. The mismatch was invisible until 3.3.3.1's `listAssets` returned `Asset[]` from a `.from('assets').select(...)` chain — tsc errored TS2322. Phase 3.3.1's migration tightened SOME constraints (CHECK on type, NOT NULL on tags) but not all; even then, CHECK constraints don't narrow generated types — only Postgres ENUMs do.
+- Mitigation: when adding hand-written types that mirror DB shapes, plan for a boundary-narrowing helper (validator + type predicate) in the loader that first crosses into application code. Don't trust that "the migration will tighten it" — verify against `lib/database.types.ts` and budget for the gap between what migration can enforce and what generator can express.
 
 ---
 
@@ -138,3 +152,17 @@
 - Two-gate (audit+plan combined, execute+verify+commit combined) authorized in chat per task for small, well-scoped operations: single-file doc edits, config-bump hygiene, snapshot regens, README tracker flips.
 - Don't streamline to two-gate without explicit authorization in the prompt. The explicit-permission discipline keeps Claude Code from shortcutting on operations that look small but might surface a gap (cf. Phase 3.3.2's tsconfig commit, which started as a small fix but exposed a latent project-wide config issue).
 - Source case: Phase 3.3.2 substep used four-gate for the substep proper (commits [1], [2], [3]) and two-gate for the bracketing hygiene commits ([2a] tsconfig and the followup snapshot re-freeze 6badeba).
+
+### Dead-surface-for-convention gets dropped (Phase 3.3.3, 2026-05-20)
+- Every new code surface (import, state, ref, helper) added for "convention" or "symmetry" reasons gets dropped if it has no concrete consumer. Imports are the specific case where `@typescript-eslint/no-unused-vars` from `next/typescript` flags this at the `next build` lint step (tsc itself doesn't catch dead imports). State and refs require plan-gate critique or runtime detection.
+- Three-strike pattern from Phase 3.3.3 — same discipline gap in three different shapes:
+  - **Strike i** (plan gate): parsed-events queue ref — would have been mutated but never read. Resolution is synchronous, so the matchedAsset state captures the result in the same tick; the queue had no consumer. Dropped before code was written, caught by Q6 dead-state reasoning at plan time.
+  - **Strike ii** (execute gate): `assets` useState added at 3.3.3.1 plan gate, dropped after `next build` lint flagged it. Value side was never read; only setAssets was called, and the actual consumer was `assetsRef.current` (which the streaming loop reads bypassing React's render cycle). The state pattern was added for "symmetry with the existing `status` useState" — but `status` has a real read site in `buttonDisabled`; `assets` had none.
+  - **Strike iii** (execute gate): `StageEvent` type import added at 3.3.3.2 execute gate, dropped before build after pre-flight `.eslintrc.json` read confirmed `next/typescript` defaults would fire. Narrowing was already inferred from `parseStageTags`'s return type — explicit import was documentation-only.
+- Mitigation: pre-execute audit reads `.eslintrc.json` (verifies `argsIgnorePattern` / `varsIgnorePattern` overrides) AND scans the proposed code for at least one concrete consumer per new symbol. If the use site is "inferred from a return type", the import is dead — drop it. From 3.3.3 forward this rule is explicit at plan gates.
+
+### Pivot to boundary-narrow when architecturally-correct path exceeds session budget (Phase 3.3.3, 2026-05-20)
+- When audit surfaces more scope than expected (e.g. type-drift gap that "properly" requires DB migration + types regen + multi-table drift handling), prefer the boundary-narrow file-local fix over the architecturally-correct schema work when: (a) hackathon judging or other deadline is in progress, (b) the boundary fix solves the immediate symptom completely (not partially), (c) the architecturally-correct work has clear deferred-session shape.
+- Park deferred work as breadcrumb in the commit body for the future dedicated hygiene session. Cite specific commits and the reason for deferring.
+- Source case: Phase 3.3.3.1 hit tsc error from Asset-vs-generated-types drift. Initial audit decision was Option 1 (DB constraints + regen). After audit confirmed the gap was wider than expected (NOT NULLs missing on multiple columns, CHECK-doesn't-narrow-generator behavior, full regen would surface drift in other tables), pivoted to Option 3 (boundary-narrow validator in `listAssets`). The 5-line filter solved the immediate problem cleanly; the architecturally-correct work (additional NOT NULLs on url/added_by/created_at, ENUM conversion for the type column, full regen with multi-table drift review) parked as breadcrumb in commit ebc2b8c's body for a future schema-hygiene session.
+- Anti-pattern: shipping the boundary-narrow without recording the deferred work means future-you forgets the architectural debt. Commit body archaeology is the proof against this.

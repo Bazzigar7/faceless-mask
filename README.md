@@ -400,7 +400,9 @@ Shipped May 12-15, 2026. Post-deploy hygiene work that doesn't block but makes t
 ### Phase 3.3 — Stage View V1 (Solo + Visual modes)
 - [x] 3.3.1: Assets table tightened + seeded ✅ shipped 2026-05-17 (commit 0a06cd5)
 - [x] 3.3.2: Stage tag parser + fuzzy asset matcher (lib/visualCommands.ts) ✅ shipped 2026-05-18 — 5-commit arc `94a51e3..6badeba` (2 feature + 3 hygiene)
-- [ ] 3.3.3: Wire stage event channel via client-side parser in VoiceLoop
+- [x] 3.3.3: Wire stage event channel via client-side parser in VoiceLoop ✅ shipped 2026-05-20 — 2-commit arc `ebc2b8c..fd2d839`
+  - [x] 3.3.3.1: Asset fetch — /api/assets route + lib/listAssets.ts + VoiceLoop fetch on mount ✅ shipped 2026-05-20 (commit ebc2b8c)
+  - [x] 3.3.3.2: parseStageTags + matchAssetByQuery wired into VoiceLoop streaming loop ✅ shipped 2026-05-20 (commit fd2d839)
 - [ ] 3.3.4: Stage component + StageLayout + mode state machine
 - [ ] 3.3.5: Idle timeout + explicit hide for stage exit
 - [ ] 3.3.6: Replace placeholder assets with curated set (after 3.3.1-3.3.5 build is verified working)
