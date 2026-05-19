@@ -5,6 +5,7 @@ import type { AlignmentData, Asset, SentenceAlignment, Viseme } from "@/lib/type
 import { useLipSync } from "@/lib/useLipSync";
 import { useCurrentWord, type WordState } from "@/lib/useCurrentWord";
 import { computeWordSegments } from "@/lib/wordSegments";
+import { parseStageTags, matchAssetByQuery } from "@/lib/visualCommands";
 import { type Status } from "./StatusIndicator";
 
 const MIN_CHUNK_CHARS = 40;
@@ -22,6 +23,7 @@ export default function VoiceLoop({
   sessionId?: string;
 } = {}) {
   const [status, setStatus] = useState<Status>("idle");
+  const [matchedAsset, setMatchedAsset] = useState<Asset | null>(null);
 
   const recorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
@@ -260,13 +262,39 @@ export default function VoiceLoop({
             const cut = m.index + m[0].length;
             const sentence = buffer.slice(0, cut).trim();
             buffer = buffer.slice(cut);
-            if (sentence) ttsChunk(sentence, sentenceCounter++).catch((e) => console.error("[VoiceLoop] TTS chunk failed", e));
+            const { strippedText, events } = parseStageTags(sentence);
+            for (const event of events) {
+              switch (event.action) {
+                case "show": {
+                  const m = matchAssetByQuery(event.query, assetsRef.current);
+                  setMatchedAsset(m);
+                  break;
+                }
+                case "hide":
+                  setMatchedAsset(null);
+                  break;
+              }
+            }
+            if (strippedText.trim()) ttsChunk(strippedText, sentenceCounter++).catch((e) => console.error("[VoiceLoop] TTS chunk failed", e));
           }
         }
 
         // Flush remaining buffer as final TTS chunk
         const tail = buffer.trim();
-        if (tail) ttsChunk(tail, sentenceCounter++).catch((e) => console.error("[VoiceLoop] TTS chunk failed", e));
+        const { strippedText: tailStripped, events: tailEvents } = parseStageTags(tail);
+        for (const event of tailEvents) {
+          switch (event.action) {
+            case "show": {
+              const m = matchAssetByQuery(event.query, assetsRef.current);
+              setMatchedAsset(m);
+              break;
+            }
+            case "hide":
+              setMatchedAsset(null);
+              break;
+          }
+        }
+        if (tailStripped.trim()) ttsChunk(tailStripped, sentenceCounter++).catch((e) => console.error("[VoiceLoop] TTS chunk failed", e));
 
         // Wait for all TTS chunks to land in the buffer, then signal end of stream
         await ttsQueueRef.current;
@@ -351,6 +379,8 @@ export default function VoiceLoop({
 
   return (
     <div className="fixed inset-x-0 bottom-0 z-20 flex flex-col-reverse items-center gap-3 px-4 pb-20">
+      {/* Phase 3.3.3 wire proof — replaced by Stage component in 3.3.4 */}
+      <div className="hidden">{matchedAsset?.id ?? null}</div>
       <button
         type="button"
         disabled={buttonDisabled}
