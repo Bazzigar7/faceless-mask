@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import type { AlignmentData, SentenceAlignment, Viseme } from "@/lib/types";
+import type { AlignmentData, Asset, SentenceAlignment, Viseme } from "@/lib/types";
 import { useLipSync } from "@/lib/useLipSync";
 import { useCurrentWord, type WordState } from "@/lib/useCurrentWord";
 import { computeWordSegments } from "@/lib/wordSegments";
@@ -33,6 +33,9 @@ export default function VoiceLoop({
   const alignmentStoreRef = useRef<SentenceAlignment[]>([]);
   const cumulativeAudioDurationRef = useRef<number>(0);
   const finishedChatRef = useRef(false);
+  // Read inside runPipeline's streaming loop, which is useCallback'd
+  // without `assets` in its deps — assetsRef bypasses stale closure.
+  const assetsRef = useRef<Asset[]>([]);
 
   const viseme = useLipSync(audioRef, alignmentStoreRef);
   const wordState = useCurrentWord(audioRef, alignmentStoreRef);
@@ -54,6 +57,19 @@ export default function VoiceLoop({
       });
     }
   }, [wordState, onWordStateChange]);
+
+  useEffect(() => {
+    fetch("/api/assets")
+      .then((r) =>
+        r.ok
+          ? (r.json() as Promise<{ assets: Asset[] }>)
+          : Promise.reject(new Error(`/api/assets ${r.status}`)),
+      )
+      .then(({ assets: data }) => {
+        assetsRef.current = data;
+      })
+      .catch((err) => console.error("[VoiceLoop] asset fetch failed", err));
+  }, []);
 
   const pumpAppendQueue = useCallback(() => {
     const sb = sourceBufferRef.current;
