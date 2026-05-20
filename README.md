@@ -320,7 +320,7 @@ create table asset_usage (
 );
 ```
 
-**Row-level security:** RLS is disabled on all tables in V1. Mask is deployed publicly at faceless-mask.vercel.app since Phase 3.1.1 (2026-05-12), and /admin + /api/admin are gated by Basic Auth middleware since Phase 3.1.2.1 (2026-05-15). The single-operator posture remains — RLS gets enabled with per-user policies when Mask Licensing (V2) introduces multi-tenancy.
+**Row-level security:** RLS is enabled on all public tables as of 2026-05-20. Mask is deployed publicly at faceless-mask.vercel.app since Phase 3.1.1 (2026-05-12), so the anon key is visible to any browser visitor. Server-side queries route through lib/supabaseAdmin.ts (service-role key) which bypasses RLS, so /api/* routes, server components, and the admin panel continue working unchanged. The anon key (NEXT_PUBLIC_SUPABASE_ANON_KEY) has no policies attached — direct browser access to public tables is blocked entirely. /admin + /api/admin remain gated by Basic Auth middleware (Phase 3.1.2.1, 2026-05-15). Per-user RLS policies arrive with Mask Licensing (V2) multi-tenancy work.
 
 ---
 
