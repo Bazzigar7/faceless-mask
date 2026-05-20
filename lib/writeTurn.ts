@@ -1,4 +1,4 @@
-import { supabase } from './supabase';
+import { supabaseAdmin as supabase } from './supabaseAdmin';
 
 /**
  * Writes a single turn to the turns table — one row per voice-

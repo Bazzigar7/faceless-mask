@@ -1,4 +1,4 @@
-import { supabase } from './supabase';
+import { supabaseAdmin as supabase } from './supabaseAdmin';
 
 /**
  * Lists all tracks joined with parent cohort and college, used by

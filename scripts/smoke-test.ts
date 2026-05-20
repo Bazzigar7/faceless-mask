@@ -1,5 +1,5 @@
 import './_load-env';
-import { supabase } from '../lib/supabase';
+import { supabaseAdmin as supabase } from '../lib/supabaseAdmin';
 import * as crypto from 'node:crypto';
 import { loadSessionContext } from '../lib/sessionContext';
 import { formatSessionContext } from '../lib/formatSessionContext';

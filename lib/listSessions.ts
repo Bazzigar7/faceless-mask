@@ -1,4 +1,4 @@
-import { supabase } from './supabase';
+import { supabaseAdmin as supabase } from './supabaseAdmin';
 
 /**
  * Lists all sessions joined with parent track, cohort, and college

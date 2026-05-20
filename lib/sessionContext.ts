@@ -1,4 +1,4 @@
-import { supabase } from './supabase';
+import { supabaseAdmin as supabase } from './supabaseAdmin';
 import { UUID_REGEX } from './uuid';
 import type { SessionBrief } from './banks/types';
 

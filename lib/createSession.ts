@@ -1,4 +1,4 @@
-import { supabase } from './supabase';
+import { supabaseAdmin as supabase } from './supabaseAdmin';
 import type { Json } from './database.types';
 import type { SessionBrief } from './banks/types';
 
