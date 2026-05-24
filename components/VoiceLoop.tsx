@@ -52,6 +52,12 @@ export default function VoiceLoop({
   // pure infrastructure with no reachable caller in 3.5.1.
   const pipelineAbortRef = useRef<AbortController | null>(null);
   const audioEndResolveRef = useRef<(() => void) | null>(null);
+  // interruptingRef is LOAD-BEARING FOR TOUCH CORRECTNESS, not merely
+  // defensive: on touch devices a tap fires touchstart AND a synthesized
+  // click, so interrupt() can be invoked twice per tap. The guard's
+  // early-return is what makes that safe — do not remove as "redundant."
+  // One-shot per pipeline; cleared in runPipeline's reset block.
+  const interruptingRef = useRef(false);
 
   const viseme = useLipSync(audioRef, alignmentStoreRef);
   const wordState = useCurrentWord(audioRef, alignmentStoreRef);
@@ -234,6 +240,7 @@ export default function VoiceLoop({
       ttsQueueRef.current = Promise.resolve();
       alignmentStoreRef.current = [];
       cumulativeAudioDurationRef.current = 0;
+      interruptingRef.current = false;
 
       // Fresh AbortController per pipeline. signal is threaded into
       // every fetch (STT + chat + each TTS) so a single ac.abort() —
@@ -420,6 +427,64 @@ export default function VoiceLoop({
     if (r && r.state === "recording") r.stop();
   }, []);
 
+  // Phase 3.5 interrupt — tears down the in-flight pipeline cleanly so
+  // status returns to idle and the next turn can start without wedge.
+  // TEMPORARY trigger via the button's "Stop" affordance during
+  // "speaking"; real trigger will be the future wake-word "Hey Mask
+  // stop" on a separate phase. Teardown order proven race-safe at the
+  // PLAN gate — see commit body of 3.5.1 (engine internals) for the
+  // audio-end-await unwedge rationale and 3.5.2 (this commit) for the
+  // step-by-step ordering justification.
+  function interrupt() {
+    if (interruptingRef.current) return;
+    interruptingRef.current = true;
+
+    // [1] Abort in-flight fetches — kicks off abort-reject unwind in
+    //     parallel with the rest of this function.
+    pipelineAbortRef.current?.abort();
+
+    // [2] Pause audio — the user-perceptible stop. No-op if not playing.
+    const audio = audioRef.current;
+    try { audio?.pause(); } catch { /* play()/pause() race; ignore */ }
+
+    // [3] Unwedge the audio-end await IF the pipeline cursor is sitting
+    //     on it (ref is null in every other window). Without this,
+    //     audio.pause() above leaves the line-355 Promise pending
+    //     forever — finally never runs, status wedges on "speaking".
+    audioEndResolveRef.current?.();
+
+    // [4] Drain TTS queues. AbortController handles in-flight fetches;
+    //     this is belt-and-suspenders so any callback enqueued before
+    //     abort doesn't accumulate.
+    ttsQueueRef.current = Promise.resolve();
+    appendQueueRef.current = [];
+
+    // [5] Tear down MediaSource. endOfStream() may have already fired
+    //     in the audio-end-await window — wrap.
+    const ms = mediaSourceRef.current;
+    if (ms && ms.readyState === "open") {
+      try { ms.endOfStream(); } catch { /* already ended or busy */ }
+    }
+    if (audio?.src) {
+      const oldSrc = audio.src;
+      audio.removeAttribute("src");
+      try { URL.revokeObjectURL(oldSrc); } catch { /* not an object URL */ }
+    }
+    mediaSourceRef.current = null;
+    sourceBufferRef.current = null;
+
+    // [6] Reset pipeline-state refs — symmetric with runPipeline's
+    //     reset block; ensures next turn starts on clean ground even
+    //     if it starts before pipeline's finally has unwound.
+    finishedChatRef.current = false;
+    alignmentStoreRef.current = [];
+    cumulativeAudioDurationRef.current = 0;
+
+    // [7] Land in idle. Pipeline's finally also calls setStatus("idle")
+    //     once awaits unwind — idempotent on same value, no flicker.
+    setStatus("idle");
+  }
+
   // Release mic if user navigates away while holding
   useEffect(() => {
     return () => {
@@ -428,27 +493,39 @@ export default function VoiceLoop({
     };
   }, []);
 
-  const buttonDisabled = status === "thinking" || status === "speaking";
+  const buttonDisabled = status === "thinking";
+  const isStopMode = status === "speaking";
+  const buttonLabel = isStopMode ? "Stop" : "Hold to speak";
 
   return (
     <div className="fixed inset-x-0 bottom-0 z-20 flex flex-col-reverse items-center gap-3 px-4 pb-20">
+      {/*
+        Phase 3.5 TEMPORARY trigger — button doubles as Stop during
+        "speaking" so we can interrupt Mask mid-speech. Real trigger
+        is the future wake-word "Hey Mask stop" on a separate phase.
+        When wake-word lands, this button can return to press-and-hold
+        only and the buttonDisabled gate widens back to include
+        "speaking".
+      */}
       <button
         type="button"
         disabled={buttonDisabled}
-        onMouseDown={startRecording}
-        onMouseUp={stopRecording}
-        onMouseLeave={stopRecording}
+        onMouseDown={isStopMode ? undefined : startRecording}
+        onMouseUp={isStopMode ? undefined : stopRecording}
+        onMouseLeave={isStopMode ? undefined : stopRecording}
+        onClick={isStopMode ? interrupt : undefined}
         onTouchStart={(e) => {
           e.preventDefault();
-          startRecording();
+          if (isStopMode) interrupt();
+          else startRecording();
         }}
         onTouchEnd={(e) => {
           e.preventDefault();
-          stopRecording();
+          if (!isStopMode) stopRecording();
         }}
         className="select-none rounded-full bg-black/40 px-6 py-2.5 text-sm font-medium text-white shadow-lg backdrop-blur-sm transition hover:bg-black/55 active:scale-95 disabled:cursor-not-allowed disabled:opacity-50"
       >
-        Hold to speak
+        {buttonLabel}
       </button>
 
       <audio ref={audioRef} autoPlay />
