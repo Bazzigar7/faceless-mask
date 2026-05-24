@@ -405,7 +405,7 @@ Shipped May 12-15, 2026. Post-deploy hygiene work that doesn't block but makes t
   - [x] 3.3.3.2: parseStageTags + matchAssetByQuery wired into VoiceLoop streaming loop ✅ shipped 2026-05-20 (commit fd2d839)
 - [x] 3.3.4: Stage component + StageLayout + mode state machine ✅ shipped 2026-05-24 — 3-commit arc `5fb081f..497ef39` (framer-motion install + modeStateMachine + Stage live)
 - [x] 3.3.5: Stage emission unlock — <stage> contract reconciled in personality.ts + parser hardened ✅ shipped 2026-05-25 — 2-commit arc `03ef74c..7b218cf` (parser whitespace/case tolerance + personality emission contract + asset whitelist)
-- [ ] 3.3.6: Idle timeout + explicit hide for stage exit
+- [x] 3.3.6: Idle timeout — Visual auto-exits to Solo after 10s idle ✅ shipped 2026-05-25 (commit 30fa2db)
 - [ ] 3.3.7: Replace placeholder assets with curated set (also re-sync the personality.ts asset whitelist to the new tags)
 
 **Hard constraints during Phase 3.3** (relax after 3.3 ships):
