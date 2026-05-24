@@ -4,6 +4,7 @@ import { MASK_SYSTEM_PROMPT } from "@/lib/personality";
 import { loadSessionContext, type SessionContext } from "@/lib/sessionContext";
 import { formatSessionContext } from "@/lib/formatSessionContext";
 import { writeTurn } from "@/lib/writeTurn";
+import { loadRecentTurns, HISTORY_TURN_LIMIT } from "@/lib/loadRecentTurns";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -40,6 +41,23 @@ async function writeTurnSafe(
   }
 }
 
+/**
+ * Graceful-degrade wrapper around loadRecentTurns. Returns [] on
+ * failure — voice continuity beats history fidelity. Mirrors the
+ * loadSessionContextSafe + writeTurnSafe pattern in this file.
+ */
+async function loadRecentTurnsSafe(
+  sessionId: string,
+  limit: number,
+): Promise<Array<{ role: 'user' | 'assistant'; content: string }>> {
+  try {
+    return await loadRecentTurns(sessionId, limit);
+  } catch (err) {
+    console.error('[chat] loadRecentTurns failed (continuing with empty history):', err);
+    return [];
+  }
+}
+
 export async function POST(req: NextRequest) {
   const { transcript, sessionId } = (await req.json()) as { transcript: string; sessionId?: string };
   if (!transcript || !transcript.trim()) {
@@ -56,6 +74,12 @@ export async function POST(req: NextRequest) {
     sessionContext ? `loaded for session ${sessionId}` :
     `loader returned null for ${sessionId}`
   );
+
+  // Load PRIOR turns before writing the current user turn — otherwise the
+  // SELECT picks up the just-written transcript and it appears twice.
+  const history = sessionId
+    ? await loadRecentTurnsSafe(sessionId, HISTORY_TURN_LIMIT)
+    : [];
 
   if (sessionId) {
     await writeTurnSafe(sessionId, 'user', transcript);
@@ -85,8 +109,15 @@ export async function POST(req: NextRequest) {
     model: "claude-sonnet-4-6",
     max_tokens: 1024,
     system: systemBlocks,
-    messages: [{ role: "user", content: transcript }],
+    messages: [...history, { role: "user", content: transcript }],
   });
+
+  // Flipped true on the first text_delta forwarded to the browser
+  // (in the ReadableStream below). Read by the .catch handler so the
+  // [interrupted] marker is only written when Mask actually started
+  // speaking — a bare API failure before any token streamed leaves
+  // history with a user turn and no assistant follow-up (honest).
+  let streamedAnyText = false;
 
   // Log cache hit metrics in dev once the stream completes
   stream
@@ -104,7 +135,11 @@ export async function POST(req: NextRequest) {
         return writeTurnSafe(sessionId, 'assistant', assistantText);
       }
     })
-    .catch(() => {});
+    .catch(() => {
+      if (sessionId && streamedAnyText) {
+        return writeTurnSafe(sessionId, 'assistant', '[interrupted]');
+      }
+    });
 
   const encoder = new TextEncoder();
   const body = new ReadableStream({
@@ -115,6 +150,7 @@ export async function POST(req: NextRequest) {
             event.type === "content_block_delta" &&
             event.delta.type === "text_delta"
           ) {
+            streamedAnyText = true;
             controller.enqueue(encoder.encode(event.delta.text));
           }
         }
