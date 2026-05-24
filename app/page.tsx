@@ -11,6 +11,8 @@ import StatusIndicator, { type Status } from "@/components/StatusIndicator";
 import Subtitles from "@/components/Subtitles";
 import VoiceLoop from "@/components/VoiceLoop";
 
+const STAGE_IDLE_TIMEOUT_MS = 10_000;
+
 function VoiceLoopWithSession(
   props: Omit<NonNullable<ComponentProps<typeof VoiceLoop>>, "sessionId">,
 ) {
@@ -40,6 +42,13 @@ export default function Page() {
       return () => clearTimeout(id);
     }
   }, [status]);
+
+  useEffect(() => {
+    if (status === "idle" && matchedAsset !== null) {
+      const id = setTimeout(() => setMatchedAsset(null), STAGE_IDLE_TIMEOUT_MS);
+      return () => clearTimeout(id);
+    }
+  }, [status, matchedAsset]);
 
   const mode = getMode(matchedAsset);
 
