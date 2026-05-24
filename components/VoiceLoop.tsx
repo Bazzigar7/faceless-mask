@@ -15,11 +15,13 @@ export default function VoiceLoop({
   onStatusChange,
   onVisemeChange,
   onWordStateChange,
+  onMatchedAssetChange,
   sessionId,
 }: {
   onStatusChange?: (status: Status) => void;
   onVisemeChange?: (viseme: Viseme) => void;
   onWordStateChange?: (state: WordState) => void;
+  onMatchedAssetChange?: (asset: Asset | null) => void;
   sessionId?: string;
 } = {}) {
   const [status, setStatus] = useState<Status>("idle");
@@ -59,6 +61,10 @@ export default function VoiceLoop({
       });
     }
   }, [wordState, onWordStateChange]);
+
+  useEffect(() => {
+    onMatchedAssetChange?.(matchedAsset);
+  }, [matchedAsset, onMatchedAssetChange]);
 
   useEffect(() => {
     fetch("/api/assets")
@@ -379,8 +385,6 @@ export default function VoiceLoop({
 
   return (
     <div className="fixed inset-x-0 bottom-0 z-20 flex flex-col-reverse items-center gap-3 px-4 pb-20">
-      {/* Phase 3.3.3 wire proof — replaced by Stage component in 3.3.4 */}
-      <div className="hidden">{matchedAsset?.id ?? null}</div>
       <button
         type="button"
         disabled={buttonDisabled}

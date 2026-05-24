@@ -2,10 +2,11 @@
 
 import { Suspense, useEffect, useState, type ComponentProps } from "react";
 import { useSearchParams } from "next/navigation";
-import Mask from "@/components/Mask";
-import type { Viseme } from "@/lib/types";
+import type { Asset, Viseme } from "@/lib/types";
 import type { WordState } from "@/lib/useCurrentWord";
+import { getMode } from "@/lib/modeStateMachine";
 import Starfield from "@/components/Starfield";
+import StageLayout from "@/components/StageLayout";
 import StatusIndicator, { type Status } from "@/components/StatusIndicator";
 import Subtitles from "@/components/Subtitles";
 import VoiceLoop from "@/components/VoiceLoop";
@@ -27,6 +28,7 @@ export default function Page() {
     sentence: null,
   });
   const [subtitleVisible, setSubtitleVisible] = useState(false);
+  const [matchedAsset, setMatchedAsset] = useState<Asset | null>(null);
 
   useEffect(() => {
     if (status === "speaking") {
@@ -38,15 +40,15 @@ export default function Page() {
       return () => clearTimeout(id);
     }
   }, [status]);
+
+  const mode = getMode(matchedAsset);
+
   return (
     <main className="relative min-h-screen overflow-hidden text-white">
       <div className="absolute inset-0 z-0">
         <Starfield />
       </div>
-      <Mask
-        viseme={viseme}
-        className="absolute left-1/2 top-1/2 z-10 h-[60vh] w-[60vh] -translate-x-1/2 -translate-y-1/2"
-      />
+      <StageLayout viseme={viseme} matchedAsset={matchedAsset} mode={mode} />
       <Subtitles
         sentence={wordState.sentence}
         activeWordIndex={wordState.activeWordIndex}
@@ -58,6 +60,7 @@ export default function Page() {
           onStatusChange={setStatus}
           onVisemeChange={setViseme}
           onWordStateChange={setWordState}
+          onMatchedAssetChange={setMatchedAsset}
         />
       </Suspense>
     </main>
