@@ -403,7 +403,7 @@ Shipped May 12-15, 2026. Post-deploy hygiene work that doesn't block but makes t
 - [x] 3.3.3: Wire stage event channel via client-side parser in VoiceLoop ✅ shipped 2026-05-20 — 2-commit arc `ebc2b8c..fd2d839`
   - [x] 3.3.3.1: Asset fetch — /api/assets route + lib/listAssets.ts + VoiceLoop fetch on mount ✅ shipped 2026-05-20 (commit ebc2b8c)
   - [x] 3.3.3.2: parseStageTags + matchAssetByQuery wired into VoiceLoop streaming loop ✅ shipped 2026-05-20 (commit fd2d839)
-- [ ] 3.3.4: Stage component + StageLayout + mode state machine
+- [x] 3.3.4: Stage component + StageLayout + mode state machine ✅ shipped 2026-05-24 — 3-commit arc `5fb081f..497ef39` (framer-motion install + modeStateMachine + Stage live)
 - [ ] 3.3.5: Idle timeout + explicit hide for stage exit
 - [ ] 3.3.6: Replace placeholder assets with curated set (after 3.3.1-3.3.5 build is verified working)
 
@@ -412,6 +412,8 @@ Shipped May 12-15, 2026. Post-deploy hygiene work that doesn't block but makes t
 - `app/api/chat/route.ts` — locked per Path B decision in 3.3.1 (3.3.3 parses stage tags client-side, not via server stream change)
 - `app/api/stt/route.ts`, `app/api/tts/route.ts` — locked (voice-loop runtime)
 - `lib/useLipSync.ts`, `lib/visemeMapping.ts`, `lib/findActiveSentence.ts` — locked (lip sync runtime)
+- `lib/supabaseAdmin.ts`, `lib/supabase.ts` — locked (Supabase security model finalized 2026-05-20; service-role bypass + anon client, do not touch)
+- `components/Mask.tsx`, `components/Subtitles.tsx`, `components/Starfield.tsx`, `components/StatusIndicator.tsx` — locked (voice-loop render components; Mode 2 layout shifts happen via parent-supplied className/wrapper, never by editing these)
 - `components/VoiceLoop.tsx` — additive only (new state + client parser; no removal of existing state or props)
 
 After Phase 3.3 closes, these files return to normal review-and-edit cadence; the lockout is specifically for the hackathon-judging window plus the duration of the Phase 3.3 substeps.
