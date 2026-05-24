@@ -419,6 +419,11 @@ Shipped May 12-15, 2026. Post-deploy hygiene work that doesn't block but makes t
 
 After Phase 3.3 closes, these files return to normal review-and-edit cadence; the lockout is specifically for the hackathon-judging window plus the duration of the Phase 3.3 substeps.
 
+### Phase 3.5 — Interrupt engine (stop Mask mid-speech)
+- [x] 3.5.1: Engine internals — AbortController + audio-end-resolve ref (dormant) ✅ shipped 2026-05-25 (commit 0db55fe)
+- [x] 3.5.2: Temp trigger — button doubles as Stop during speaking ✅ shipped 2026-05-25 (commit ecc0f3a)
+- [ ] Wake-word trigger ("Hey Mask stop") — deferred to the wake-word phase (replaces the temp button trigger)
+
 ### Phase 3 — remaining (post-3.3)
 - [ ] Phase 3.4 — Activity mode (Mode 3) — deferred per Phase 3.3 prompt
 - [ ] Asset upload UI (app/library/page.tsx)
