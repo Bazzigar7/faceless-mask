@@ -1,5 +1,5 @@
 // Verifies the two pure functions in lib/visualCommands.ts behave
-// correctly across 20 fixtures (10 parseStageTags + 10 matchAssetByQuery).
+// correctly across 28 fixtures (18 parseStageTags + 10 matchAssetByQuery).
 // Each parseStageTags fixture asserts the return shape AND whether
 // console.warn fired for malformed inputs. SEED_ASSETS mirrors the
 // 5 rows seeded in migration 20260516030000_assets_tighten_and_seed.sql.
@@ -164,11 +164,67 @@ const PARSE_FIXTURES: ParseFixture[] = [
     expectsWarn: true,
   },
   {
-    name: "array body — regex requires {…}, text passes through",
+    name: "array body — JSON.parse succeeds but Array.isArray rejects, stripped + warns",
     input: `Try this <stage>[1,2]</stage> moment.`,
-    expectedStripped: `Try this <stage>[1,2]</stage> moment.`,
+    expectedStripped: `Try this  moment.`,
+    expectedEvents: [],
+    expectsWarn: true,
+  },
+  {
+    name: "padded wrapper — whitespace between <stage> and { tolerated",
+    input: `Try this <stage> {"action":"show","query":"pizza"} </stage> moment.`,
+    expectedStripped: `Try this  moment.`,
+    expectedEvents: [{ action: "show", query: "pizza" }],
+    expectsWarn: false,
+  },
+  {
+    name: "uppercase tag — <STAGE>...</STAGE> tolerated",
+    input: `Try this <STAGE>{"action":"show","query":"pizza"}</STAGE> moment.`,
+    expectedStripped: `Try this  moment.`,
+    expectedEvents: [{ action: "show", query: "pizza" }],
+    expectsWarn: false,
+  },
+  {
+    name: "mixed-case tag — <Stage>...</Stage> tolerated",
+    input: `Try this <Stage>{"action":"show","query":"pizza"}</Stage> moment.`,
+    expectedStripped: `Try this  moment.`,
+    expectedEvents: [{ action: "show", query: "pizza" }],
+    expectsWarn: false,
+  },
+  {
+    name: "braces-less body — strips, JSON.parse fails, warns",
+    input: `Try this <stage>show pizza</stage> moment.`,
+    expectedStripped: `Try this  moment.`,
+    expectedEvents: [],
+    expectsWarn: true,
+  },
+  {
+    name: "empty body — strips, JSON.parse fails, warns",
+    input: `Try this <stage></stage> moment.`,
+    expectedStripped: `Try this  moment.`,
+    expectedEvents: [],
+    expectsWarn: true,
+  },
+  {
+    name: "newline padding inside tag tolerated",
+    input: `Try this <stage>\n{"action":"show","query":"pizza"}\n</stage> moment.`,
+    expectedStripped: `Try this  moment.`,
+    expectedEvents: [{ action: "show", query: "pizza" }],
+    expectsWarn: false,
+  },
+  {
+    name: "unterminated opener — no closing tag, text passes verbatim",
+    input: `He moved to the next <stage> of the project, focusing on growth.`,
+    expectedStripped: `He moved to the next <stage> of the project, focusing on growth.`,
     expectedEvents: [],
     expectsWarn: false,
+  },
+  {
+    name: "non-greedy span match — opener+closer with prose between, span stripped, warns",
+    input: `Hello <stage>this is regular prose that mentions a stage and continues</stage> world.`,
+    expectedStripped: `Hello  world.`,
+    expectedEvents: [],
+    expectsWarn: true,
   },
 ];
 
@@ -270,10 +326,10 @@ function runParseFixture(f: ParseFixture, index: number): void {
       `warn-fired mismatch: expected ${f.expectsWarn}, got ${warned}`,
     );
     passed++;
-    console.log(`  ✅ [parse ${index + 1}/10] ${f.name}`);
+    console.log(`  ✅ [parse ${index + 1}/${PARSE_FIXTURES.length}] ${f.name}`);
   } catch (err) {
     failed++;
-    console.error(`  ❌ [parse ${index + 1}/10] ${f.name}`);
+    console.error(`  ❌ [parse ${index + 1}/${PARSE_FIXTURES.length}] ${f.name}`);
     console.error(`     ${err instanceof Error ? err.message : String(err)}`);
     if (getWarnings().length > 0) {
       console.error(`     captured warns: ${JSON.stringify(getWarnings())}`);
@@ -291,10 +347,10 @@ function runMatchFixture(f: MatchFixture, index: number): void {
       `expected id ${f.expectedId}, got ${actualId}`,
     );
     passed++;
-    console.log(`  ✅ [match ${index + 1}/10] ${f.name}`);
+    console.log(`  ✅ [match ${index + 1}/${MATCH_FIXTURES.length}] ${f.name}`);
   } catch (err) {
     failed++;
-    console.error(`  ❌ [match ${index + 1}/10] ${f.name}`);
+    console.error(`  ❌ [match ${index + 1}/${MATCH_FIXTURES.length}] ${f.name}`);
     console.error(`     ${err instanceof Error ? err.message : String(err)}`);
   }
 }

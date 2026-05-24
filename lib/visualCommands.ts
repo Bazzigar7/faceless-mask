@@ -10,7 +10,7 @@
 
 import type { Asset, StageEvent } from '@/lib/types';
 
-const STAGE_TAG_REGEX = /<stage>(\{[\s\S]*?\})<\/stage>/g;
+const STAGE_TAG_REGEX = /<stage>([\s\S]*?)<\/stage>/gi;
 
 /**
  * Extract and strip <stage>...</stage> tags from chat-stream text.
