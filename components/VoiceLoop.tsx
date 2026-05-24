@@ -41,6 +41,18 @@ export default function VoiceLoop({
   // without `assets` in its deps — assetsRef bypasses stale closure.
   const assetsRef = useRef<Asset[]>([]);
 
+  // Phase 3.5 interrupt engine plumbing (3.5.1 dormant infra).
+  // pipelineAbortRef holds the per-pipeline AbortController so its
+  // signal can be threaded into chat/STT/ttsChunk fetches and
+  // cancelled by interrupt() (lands in 3.5.2 with the temp trigger).
+  // audioEndResolveRef stashes the resolve fn of the line-320 audio-
+  // end-await Promise so interrupt() can unwedge it on a pause path
+  // (audio.pause() does NOT fire "ended"). On a normal turn the
+  // "ended" event still resolves the Promise first — these refs are
+  // pure infrastructure with no reachable caller in 3.5.1.
+  const pipelineAbortRef = useRef<AbortController | null>(null);
+  const audioEndResolveRef = useRef<(() => void) | null>(null);
+
   const viseme = useLipSync(audioRef, alignmentStoreRef);
   const wordState = useCurrentWord(audioRef, alignmentStoreRef);
 
@@ -126,10 +138,16 @@ export default function VoiceLoop({
   const ttsChunk = useCallback(
     (text: string, sentenceIndex: number) => {
       ttsQueueRef.current = ttsQueueRef.current.then(async () => {
+        // Read signal at fetch time, not at ttsChunk-call time —
+        // chunks may be enqueued early but fetched later. If pipeline
+        // was interrupted before this chunk's turn, signal carries the
+        // aborted state and the fetch rejects immediately.
+        const signal = pipelineAbortRef.current?.signal;
         const res = await fetch("/api/tts", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ text }),
+          signal,
         });
         if (!res.ok || !res.body) {
           throw new Error(`TTS failed: ${res.status}`);
@@ -217,6 +235,12 @@ export default function VoiceLoop({
       alignmentStoreRef.current = [];
       cumulativeAudioDurationRef.current = 0;
 
+      // Fresh AbortController per pipeline. signal is threaded into
+      // every fetch (STT + chat + each TTS) so a single ac.abort() —
+      // wired through interrupt() in 3.5.2 — cascades to all of them.
+      const ac = new AbortController();
+      pipelineAbortRef.current = ac;
+
       try {
         setStatus("thinking");
 
@@ -225,6 +249,7 @@ export default function VoiceLoop({
           method: "POST",
           headers: { "Content-Type": audioBlob.type || "audio/webm" },
           body: audioBlob,
+          signal: ac.signal,
         });
         if (!sttRes.ok) throw new Error(`STT failed: ${sttRes.status}`);
         const { transcript: t } = (await sttRes.json()) as { transcript: string };
@@ -245,6 +270,7 @@ export default function VoiceLoop({
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ transcript: t, sessionId }),
+          signal: ac.signal,
         });
         if (!chatRes.ok || !chatRes.body) throw new Error(`Chat failed: ${chatRes.status}`);
 
@@ -316,20 +342,41 @@ export default function VoiceLoop({
           }
         }
 
-        // Wait for playback to end before going idle
+        // Wait for playback to end before going idle.
+        // Resolve fn is also stashed in audioEndResolveRef so the
+        // future interrupt() (3.5.2) can unwedge this await when
+        // audio.pause() is used to stop mid-playback — pause does
+        // NOT fire "ended", so without the external handle this
+        // Promise would hang forever and finally would never run.
+        // On a normal turn, the "ended" event fires first and
+        // resolves the Promise via onEnd; the manual resolve path
+        // is unreachable in 3.5.1 (no caller).
         await new Promise<void>((resolve) => {
           const a = audioRef.current!;
+          audioEndResolveRef.current = resolve;
           const onEnd = () => {
             a.removeEventListener("ended", onEnd);
+            audioEndResolveRef.current = null;
             resolve();
           };
           a.addEventListener("ended", onEnd);
           // Safety net: if the audio is already done buffering and ended fired earlier
-          if (a.ended) resolve();
+          if (a.ended) {
+            audioEndResolveRef.current = null;
+            resolve();
+          }
         });
       } catch (e) {
-        console.error("[VoiceLoop] pipeline failed", e);
+        // AbortError is intentional (interrupt() in 3.5.2) — silent.
+        // Anything else is a real pipeline failure.
+        if (e instanceof DOMException && e.name === "AbortError") {
+          // intentional interrupt
+        } else {
+          console.error("[VoiceLoop] pipeline failed", e);
+        }
       } finally {
+        pipelineAbortRef.current = null;
+        audioEndResolveRef.current = null;
         setStatus("idle");
       }
     },
