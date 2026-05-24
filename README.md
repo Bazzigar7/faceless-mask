@@ -424,6 +424,11 @@ After Phase 3.3 closes, these files return to normal review-and-edit cadence; th
 - [x] 3.5.2: Temp trigger — button doubles as Stop during speaking ✅ shipped 2026-05-25 (commit ecc0f3a)
 - [ ] Wake-word trigger ("Hey Mask stop") — deferred to the wake-word phase (replaces the temp button trigger)
 
+### Phase 3.6 — Within-session conversational memory
+- [x] Last 8 turns (HISTORY_TURN_LIMIT) read from the turns table, prepended to the messages array ✅ shipped 2026-05-25 (commit fa13d89)
+- [x] Server-side (reuses Phase 2b.3 turn persistence); load-before-write closes the double-count; system-block cache prefix preserved
+- [x] Interrupted turns write an [interrupted] marker only when text actually streamed
+
 ### Phase 3 — remaining (post-3.3)
 - [ ] Phase 3.4 — Activity mode (Mode 3) — deferred per Phase 3.3 prompt
 - [ ] Asset upload UI (app/library/page.tsx)
