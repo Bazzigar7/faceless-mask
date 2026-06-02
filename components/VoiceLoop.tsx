@@ -6,11 +6,17 @@ import { useLipSync } from "@/lib/useLipSync";
 import { useCurrentWord, type WordState } from "@/lib/useCurrentWord";
 import { computeWordSegments } from "@/lib/wordSegments";
 import { parseStageTags, matchAssetByQuery } from "@/lib/visualCommands";
+import { startSilenceDetection } from "@/lib/silenceDetector";
 import { type Status } from "./StatusIndicator";
 import WakeWord from "./WakeWord";
 
 const MIN_CHUNK_CHARS = 40;
 const SENTENCE_END = /[.!?]\s/;
+
+// Phase 3.7 — hands-free auto-stop tunables (button turns are unaffected).
+const SILENCE_STOP_MS = 1300; // sub-threshold after speech → auto-stop
+const SILENCE_THRESHOLD = 0.02; // normalized RMS gate (tune in smoke)
+const MAX_RECORDING_MS = 15000; // hard ceiling — runaway backstop
 
 export default function VoiceLoop({
   onStatusChange,
@@ -30,6 +36,10 @@ export default function VoiceLoop({
 
   const recorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
+  // Phase 3.7 hands-free auto-stop: silence-detector teardown fn + ceiling
+  // timer. Set only on wake-started turns; torn down in recorder.onstop.
+  const silenceStopRef = useRef<(() => void) | null>(null);
+  const maxDurationTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const mediaSourceRef = useRef<MediaSource | null>(null);
   const sourceBufferRef = useRef<SourceBuffer | null>(null);
@@ -397,7 +407,7 @@ export default function VoiceLoop({
     [initMediaSource, ttsChunk],
   );
 
-  const startRecording = useCallback(async () => {
+  const startRecording = useCallback(async (fromWake = false) => {
     if (status !== "idle") return;
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
@@ -407,6 +417,14 @@ export default function VoiceLoop({
         if (e.data && e.data.size > 0) chunksRef.current.push(e.data);
       };
       recorder.onstop = () => {
+        // Tear down hands-free auto-stop no matter how recording ended
+        // (silence, ceiling, or button). No-ops on button turns (refs null).
+        silenceStopRef.current?.();
+        silenceStopRef.current = null;
+        if (maxDurationTimerRef.current) {
+          clearTimeout(maxDurationTimerRef.current);
+          maxDurationTimerRef.current = null;
+        }
         stream.getTracks().forEach((t) => t.stop());
         const blob = new Blob(chunksRef.current, {
           type: recorder.mimeType || "audio/webm",
@@ -417,10 +435,27 @@ export default function VoiceLoop({
       recorderRef.current = recorder;
       recorder.start();
       setStatus("listening");
+
+      // Hands-free turns auto-end via silence + a hard ceiling. Button turns
+      // (fromWake=false) keep stopping only on release — behavior unchanged.
+      if (fromWake) {
+        silenceStopRef.current = startSilenceDetection(stream, {
+          threshold: SILENCE_THRESHOLD,
+          silenceMs: SILENCE_STOP_MS,
+          onSilence: () => stopRecording(),
+        });
+        maxDurationTimerRef.current = setTimeout(
+          () => stopRecording(),
+          MAX_RECORDING_MS,
+        );
+      }
     } catch (e) {
       console.error("[VoiceLoop] startRecording failed", e);
       setStatus("idle");
     }
+    // stopRecording is a stable useCallback([]); referenced above but kept out
+    // of deps to avoid a TDZ on its later declaration (mirrors runPipeline).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [runPipeline, status]);
 
   const stopRecording = useCallback(() => {
@@ -511,14 +546,14 @@ export default function VoiceLoop({
       <button
         type="button"
         disabled={buttonDisabled}
-        onMouseDown={isStopMode ? undefined : startRecording}
+        onMouseDown={isStopMode ? undefined : () => startRecording(false)}
         onMouseUp={isStopMode ? undefined : stopRecording}
         onMouseLeave={isStopMode ? undefined : stopRecording}
         onClick={isStopMode ? interrupt : undefined}
         onTouchStart={(e) => {
           e.preventDefault();
           if (isStopMode) interrupt();
-          else startRecording();
+          else startRecording(false);
         }}
         onTouchEnd={(e) => {
           e.preventDefault();
@@ -529,7 +564,7 @@ export default function VoiceLoop({
         {buttonLabel}
       </button>
 
-      <WakeWord status={status} onWake={() => {}} />
+      <WakeWord status={status} onWake={() => startRecording(true)} />
 
       <audio ref={audioRef} autoPlay />
     </div>

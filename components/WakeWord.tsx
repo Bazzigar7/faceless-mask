@@ -3,21 +3,20 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { type Status } from "./StatusIndicator";
 
-// Phase 3.7 — Wake word V1 (micro-step 1 of 2): DETECTION-ONLY.
+// Phase 3.7 — Wake word V1: hands-free activation.
 // Listens for "hey mask" on the browser-native Web Speech API
 // (Chrome-only for V1 — deliberate; cross-browser/on-device is V2).
-// On detection it console.logs ONLY. It does NOT trigger the pipeline:
-// onWake is declared on the props for the next micro-step but is left
-// unwired here so this step's behavior is unambiguous.
+// On detection it console.logs AND calls onWake to start the real voice
+// pipeline hands-free (micro-step 2). onWake is wired to startRecording in
+// VoiceLoop; its own status==="idle" guard makes a stray wake a safe no-op.
 interface WakeWordProps {
   status: Status;
-  // Wired in micro-step 2 — intentionally not destructured/referenced yet.
   onWake?: () => void;
 }
 
 const WAKE_PHRASE = "hey mask";
 
-export default function WakeWord({ status }: WakeWordProps) {
+export default function WakeWord({ status, onWake }: WakeWordProps) {
   const [armed, setArmed] = useState(false);
 
   // Long-lived recognition callbacks (onend/onresult) close over their
@@ -56,6 +55,7 @@ export default function WakeWord({ status }: WakeWordProps) {
         const transcript = result[0].transcript.toLowerCase();
         if (transcript.includes(WAKE_PHRASE)) {
           console.log("[WakeWord] detected: hey mask");
+          onWake?.();
         }
       }
     };
