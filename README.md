@@ -49,7 +49,7 @@ The best teacher anyone remembers from school is the one who told funny stories 
 | LLM | Claude Sonnet 4.6 (`claude-sonnet-4-6`) | Best speed-quality tradeoff for voice. Prompt caching enabled from day 1. |
 | Speech-to-text | OpenAI Whisper (`whisper-1`) | Auto-detects code-mix English/Tamil/Hindi. Pivoted from Deepgram in Phase 1 (see Known reversals). |
 | Text-to-speech | ElevenLabs Multilingual v2 | Starter tier ($5/mo) active; Turbo v2.5 flip is unblocked, deferred to its own substep for the latency win. |
-| Wake word | Picovoice Porcupine | Free for personal use, runs in browser. Phase 3. |
+| Wake word | Browser-native Web Speech API (Chrome-only, V1) | Picovoice Porcupine discontinued its free tier (see Known reversals). Web Speech ships V1 hands-free "Hey Mask" activation. ✅ Phase 3.7 (2026-06-03). |
 | Animation | SVG + Tailwind transitions + rAF | Framer Motion not installed; deferred until Mode 2/3 transitions are needed in Phase 3. |
 | Hosting | Vercel | Hobby tier; live at https://faceless-mask.vercel.app (shipped May 12, 2026) |
 
@@ -60,6 +60,8 @@ The stack above reflects what's actually running. Two layers got pivoted during 
 1. **Deepgram Nova-2 → OpenAI Whisper.** Deepgram login was broken on the `bazaffiliate` account during Phase 1. Whisper handles Indian English and code-mix fine and was a 5-minute swap. Reversal trigger: when streaming STT becomes a priority in Phase 3 (lower latency, partial transcripts for "interruptibility"), revisit Deepgram once auth is resolved. Code path: `app/api/stt/route.ts`.
 
 2. **ElevenLabs Turbo v2.5 → Multilingual v2.** Turbo isn't available on the free tier. Starter tier ($5/mo) is now active as of 2026-05-09, which unblocks the Turbo v2.5 model-string flip in `app/api/tts/route.ts`. The flip itself is unblocked but deferred to a separate substep so the latency win lands as a discrete, measurable change.
+
+3. **Picovoice Porcupine → browser-native Web Speech API (Chrome-only, V1).** Picovoice discontinued its free tier — access is now a manual commercial-approval gate with 7-day trials (terms effective June 30, 2026), which doesn't fit a one-builder classroom project. The Web Speech API (`webkitSpeechRecognition`) ships V1 wake-word activation with no key and no cost, at the cost of being Chrome-only and cloud-based. Reversal trigger: a V2 cross-browser/on-device need — revisit an on-device engine (Vosk, or Porcupine if its access terms change). Code path: `components/WakeWord.tsx`, `types/speech-recognition.d.ts`. Shipped Phase 3.7 (2026-06-03).
 
 ---
 
@@ -212,7 +214,7 @@ For Mode 2/3 (when Mask shrinks to a corner), a head-only crop is available as `
 ## The voice loop architecture
 
 ```
-[Wake word "Hey Mask"]  ←—— Picovoice in browser (Phase 3)
+[Wake word "Hey Mask"]  ←—— Web Speech API in browser, Chrome-only (Phase 3.7 ✅)
         ↓                       Phase 1 = push-to-talk button
 [Microphone opens, audio streams]
         ↓
@@ -337,7 +339,7 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=
 SUPABASE_SERVICE_ROLE_KEY=
 
 # Phase 3
-# PICOVOICE_ACCESS_KEY=
+# PICOVOICE_ACCESS_KEY=         # not used in V1 — wake word ships on the keyless Web Speech API (Phase 3.7); only needed if V2 reverts to Porcupine
 # DEEPGRAM_API_KEY=              # if reverting STT (see Known reversals)
 ```
 
@@ -429,10 +431,17 @@ After Phase 3.3 closes, these files return to normal review-and-edit cadence; th
 - [x] Server-side (reuses Phase 2b.3 turn persistence); load-before-write closes the double-count; system-block cache prefix preserved
 - [x] Interrupted turns write an [interrupted] marker only when text actually streamed
 
+### Phase 3.7 — Wake word V1 (hands-free activation) ✅
+Shipped 2026-06-03, production-verified on faceless-mask.vercel.app. Engine pivot from Picovoice to the browser-native Web Speech API (Chrome-only V1) — see Known reversals.
+- [x] 3.7 (1/2): `components/WakeWord.tsx` — Web Speech API listener (`webkitSpeechRecognition`, continuous, status-gated to idle, onend keep-alive restart, one-time "Arm wake word" gesture); detection-only, logs on "hey mask" (final-result match). Ambient `types/speech-recognition.d.ts`. ✅ shipped 2026-06-03 (commit a6d1df6)
+- [x] 3.7 (2/2): Hands-free activation — onWake → `startRecording(true)`; end-of-speech auto-stop via `lib/silenceDetector.ts` (Web Audio AnalyserNode RMS VAD, ~1.3s sub-threshold after a speech-started latch) + `MAX_RECORDING_MS` (15s) ceiling backstop. Hands-free only — push-to-talk button behavior unchanged. ✅ shipped 2026-06-03 (commit 80fe525)
+- [ ] Wake-word stop trigger ("Hey Mask stop") — still deferred; Phase 3.5 temp button-trigger remains (see Phase 3.5)
+- [ ] Follow-up conversation mode — see Deferred decisions
+
 ### Phase 3 — remaining (post-3.3)
 - [ ] Phase 3.4 — Activity mode (Mode 3) — deferred per Phase 3.3 prompt
 - [ ] Asset upload UI (app/library/page.tsx)
-- [ ] Picovoice "Hey Mask" wake word
+- [x] "Hey Mask" wake word — shipped as Phase 3.7 (Web Speech API, not Picovoice; 2026-06-03)
 - [ ] Streaming STT (revisit Deepgram or Whisper streaming)
 - [ ] Quiz generator from transcript
 
@@ -502,6 +511,14 @@ Three candidate shapes for an auto-writer, all viable from the existing chat-rou
 Reconsider triggers:
 - Baz tires of manual entry (volume signal — likely once cohort count or session frequency makes manual untenable)
 - Mask Licensing requires per-tenant auto-summary (V2 product signal — multi-tenant means manual doesn't scale)
+
+### Wake word V2 — cross-browser + on-device (Phase 3.7 shipped V1)
+
+V1 wake word ("Hey Mask" hands-free activation) shipped on the browser-native Web Speech API — Chrome-only and cloud-based (see Known reversals for the Picovoice pivot). V2 PLAY: revisit a cross-browser, on-device engine — Vosk (offline, open-source), or Porcupine if Picovoice's access terms change. Reconsider trigger: a non-Chrome display target, an offline/privacy requirement, or Picovoice's free tier returning.
+
+### Follow-up conversation mode (next phase)
+
+Today each turn needs a fresh "Hey Mask" (or button press). FOLLOW-UP: after Mask finishes answering, re-open the mic for a short follow-up window so the user can continue without re-saying the wake word. To design: the window's exit conditions (silence timeout vs an explicit "thanks Mask"/stop phrase), and guarding against self-trigger (Mask's own TTS re-arming the mic). Builds on the Phase 3.7 silence detector + status-gate. Next phase.
 
 ---
 
