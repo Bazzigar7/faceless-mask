@@ -7,6 +7,7 @@ import { useCurrentWord, type WordState } from "@/lib/useCurrentWord";
 import { computeWordSegments } from "@/lib/wordSegments";
 import { parseStageTags, matchAssetByQuery } from "@/lib/visualCommands";
 import { type Status } from "./StatusIndicator";
+import WakeWord from "./WakeWord";
 
 const MIN_CHUNK_CHARS = 40;
 const SENTENCE_END = /[.!?]\s/;
@@ -527,6 +528,8 @@ export default function VoiceLoop({
       >
         {buttonLabel}
       </button>
+
+      <WakeWord status={status} onWake={() => {}} />
 
       <audio ref={audioRef} autoPlay />
     </div>
