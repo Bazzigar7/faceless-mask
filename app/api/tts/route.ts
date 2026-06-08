@@ -23,6 +23,10 @@ export async function POST(req: NextRequest) {
     optimize_streaming_latency: "3",
   });
 
+  // TEMP (Phase 3.2 latency measurement): TTFB = time from request start to
+  // ElevenLabs response headers. Lands in Vercel function logs. REMOVE in the
+  // 3.2 doc-sweep before this file re-locks.
+  const ttsStart = performance.now();
   const eleven = await fetch(
     `https://api.elevenlabs.io/v1/text-to-speech/${voiceId}/stream/with-timestamps?${params.toString()}`,
     {
@@ -34,11 +38,13 @@ export async function POST(req: NextRequest) {
       },
       body: JSON.stringify({
         text,
-        // Free tier doesn't allow turbo v2.5. Switch back to eleven_turbo_v2_5 once on Starter plan ($5/mo) for lower latency.
-        model_id: "eleven_multilingual_v2",
+        // Turbo v2.5 — active TTS model on the paid (Starter) tier for lower latency; see README Known Reversals #2.
+        model_id: "eleven_turbo_v2_5",
       }),
     },
   );
+  // TEMP (Phase 3.2): see note above — remove in doc-sweep.
+  console.log(`[Phase 3.2 TEMP] TTS TTFB: ${(performance.now() - ttsStart).toFixed(0)}ms`);
 
   if (!eleven.ok || !eleven.body) {
     const detail = await eleven.text().catch(() => "");
