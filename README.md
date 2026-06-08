@@ -48,7 +48,7 @@ The best teacher anyone remembers from school is the one who told funny stories 
 | Database | Supabase | Already paid for, already integrated |
 | LLM | Claude Sonnet 4.6 (`claude-sonnet-4-6`) | Best speed-quality tradeoff for voice. Prompt caching enabled from day 1. |
 | Speech-to-text | OpenAI Whisper (`whisper-1`) | Auto-detects code-mix English/Tamil/Hindi. Pivoted from Deepgram in Phase 1 (see Known reversals). |
-| Text-to-speech | ElevenLabs Multilingual v2 | Starter tier ($5/mo) active; Turbo v2.5 flip is unblocked, deferred to its own substep for the latency win. |
+| Text-to-speech | ElevenLabs Turbo v2.5 | Flipped from Multilingual v2 on 2026-06-08 (Phase 3.2). TTFB ~150ms; Tamil/Hindi confirmed fine. See Known Reversals #2. |
 | Wake word | Browser-native Web Speech API (Chrome-only, V1) | Picovoice Porcupine discontinued its free tier (see Known reversals). Web Speech ships V1 hands-free "Hey Mask" activation. ✅ Phase 3.7 (2026-06-03). |
 | Animation | SVG + Tailwind transitions + rAF | Framer Motion not installed; deferred until Mode 2/3 transitions are needed in Phase 3. |
 | Hosting | Vercel | Hobby tier; live at https://faceless-mask.vercel.app (shipped May 12, 2026) |
@@ -59,7 +59,7 @@ The stack above reflects what's actually running. Two layers got pivoted during 
 
 1. **Deepgram Nova-2 → OpenAI Whisper.** Deepgram login was broken on the `bazaffiliate` account during Phase 1. Whisper handles Indian English and code-mix fine and was a 5-minute swap. Reversal trigger: when streaming STT becomes a priority in Phase 3 (lower latency, partial transcripts for "interruptibility"), revisit Deepgram once auth is resolved. Code path: `app/api/stt/route.ts`.
 
-2. **ElevenLabs Turbo v2.5 → Multilingual v2.** Turbo isn't available on the free tier. Starter tier ($5/mo) is now active as of 2026-05-09, which unblocks the Turbo v2.5 model-string flip in `app/api/tts/route.ts`. The flip itself is unblocked but deferred to a separate substep so the latency win lands as a discrete, measurable change.
+2. **ElevenLabs Turbo v2.5 → Multilingual v2 — RESOLVED 2026-06-08 (flipped back to Turbo).** Turbo wasn't available on the free tier, so Phase 1 ran Multilingual v2. Starter tier ($5/mo), active since 2026-05-09, unblocked the swap; Phase 3.2 flipped `app/api/tts/route.ts` back to `eleven_turbo_v2_5`. Tamil/Hindi quality confirmed fine by ear with no regression (Turbo v2.5 is a language superset). TTFB measured ~150ms in Vercel logs — strictly a `model_id` change, so endpoint / `output_format` / useLipSync alignment were unaffected. Code path: `app/api/tts/route.ts`.
 
 3. **Picovoice Porcupine → browser-native Web Speech API (Chrome-only, V1).** Picovoice discontinued its free tier — access is now a manual commercial-approval gate with 7-day trials (terms effective June 30, 2026), which doesn't fit a one-builder classroom project. The Web Speech API (`webkitSpeechRecognition`) ships V1 wake-word activation with no key and no cost, at the cost of being Chrome-only and cloud-based. Reversal trigger: a V2 cross-browser/on-device need — revisit an on-device engine (Vosk, or Porcupine if its access terms change). Code path: `components/WakeWord.tsx`, `types/speech-recognition.d.ts`. Shipped Phase 3.7 (2026-06-03).
 
@@ -235,8 +235,8 @@ For Mode 2/3 (when Mask shrinks to a corner), a head-only crop is available as `
 
 **Latency budget**: target is total round-trip under 2 seconds from end-of-question to start-of-speech. Phase 1 lands at ~3 seconds — over budget. The path back inside budget:
 
-1. ElevenLabs Turbo v2.5 on Starter tier (~500-800ms back). One-line flip.
-2. Streaming STT (Deepgram return or Whisper streaming alternative) cuts another chunk.
+1. ~~ElevenLabs Turbo v2.5 on Starter tier~~ — **shipped Phase 3.2 (2026-06-08), but it was NOT the bottleneck.** Measured TTS TTFB ~150ms (range ~126–204ms) in Vercel logs. The flip stays for quality/cost headroom; the latency gain was small. Crossed off the list.
+2. **Streaming STT** (Deepgram return or Whisper streaming alternative) — now the prime suspect. Whisper today is batch: it waits for the *entire* recording to finish before transcribing, so the full utterance length is dead latency before Claude even starts. This is the next latency fight. Still open.
 3. Aggressive prompt caching for system prompt — already enabled, verified working (`cache_read=4420` on subsequent calls).
 
 The 2s target is non-negotiable for live classroom sessions. Phase 1 demoability is fine at 3s. Phase 5 is not.
@@ -358,7 +358,7 @@ Account map (which email owns which key) lives in `~/Desktop/mask-accounts.txt`.
 - [x] STT → Claude → TTS pipeline working end-to-end
 - [x] Personality file loading on every call with prompt caching verified
 - [x] First conversation in office (Mask responded in character on first test)
-- [ ] Latency under 2s — *currently ~3s. Starter tier is now active so Turbo v2.5 swap is unblocked; remaining latency wins are Turbo flip + streaming STT in Phase 3.*
+- [ ] Latency under 2s — *Turbo v2.5 shipped (Phase 3.2, 2026-06-08) but TTS TTFB is only ~150ms — not the bottleneck. Remaining win is streaming STT (Whisper is batch). Still over budget.*
 - [x] Vercel deploy — live at https://faceless-mask.vercel.app
 - [ ] Ship clip recorded and posted *(Recorded 2026-05-09; not posted yet.)*
 
@@ -398,6 +398,13 @@ Shipped May 12-15, 2026. Post-deploy hygiene work that doesn't block but makes t
 - [x] Phase 3.1.2.3 — Verbosity observation captured to polish backlog (May 15, commit dfdf96a)
 - [x] Phase 3.1.2.4 — findActiveSentence helper extracted from useLipSync + useCurrentWord (May 15, commit bc82368)
 - [x] Phase 3.1.2.5 — Dead transcript/error UI removed from VoiceLoop (May 15, commit ba81b77)
+
+### Phase 3.2 — Turbo v2.5 latency flip ✅
+Shipped 2026-06-08 (flip commit 3a25927 + doc-sweep). TTS model swapped Multilingual v2 → Turbo v2.5 on the paid Starter tier (see Known Reversals #2). Strictly a `model_id` change — endpoint, `output_format`, and useLipSync NDJSON alignment all unaffected; Turbo is a language superset so Tamil + Hindi confirmed fine by ear.
+- [x] `model_id` flip in `app/api/tts/route.ts` (now re-locked)
+- [x] Smoke: Tamil/Hindi quality confirmed, lip sync intact, stage tags fire
+- [x] Temp TTFB instrumentation added for measurement, then removed in doc-sweep
+- **Finding:** TTS TTFB ~150ms (range ~126–204ms) in Vercel logs — TTS is NOT the latency bottleneck. The remaining path to <2s is streaming STT (Whisper is batch; it waits for the full recording before transcribing). Streaming STT stays open under Phase 3 remaining.
 
 ### Phase 3.3 — Stage View V1 (Solo + Visual modes)
 - [x] 3.3.1: Assets table tightened + seeded ✅ shipped 2026-05-17 (commit 0a06cd5)

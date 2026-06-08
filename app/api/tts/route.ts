@@ -23,10 +23,6 @@ export async function POST(req: NextRequest) {
     optimize_streaming_latency: "3",
   });
 
-  // TEMP (Phase 3.2 latency measurement): TTFB = time from request start to
-  // ElevenLabs response headers. Lands in Vercel function logs. REMOVE in the
-  // 3.2 doc-sweep before this file re-locks.
-  const ttsStart = performance.now();
   const eleven = await fetch(
     `https://api.elevenlabs.io/v1/text-to-speech/${voiceId}/stream/with-timestamps?${params.toString()}`,
     {
@@ -43,8 +39,6 @@ export async function POST(req: NextRequest) {
       }),
     },
   );
-  // TEMP (Phase 3.2): see note above — remove in doc-sweep.
-  console.log(`[Phase 3.2 TEMP] TTS TTFB: ${(performance.now() - ttsStart).toFixed(0)}ms`);
 
   if (!eleven.ok || !eleven.body) {
     const detail = await eleven.text().catch(() => "");
