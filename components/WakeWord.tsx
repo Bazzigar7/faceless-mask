@@ -68,15 +68,6 @@ export default function WakeWord({ status, onWake }: WakeWordProps) {
   // a backed-off retry instead of dying silently. Reads everything through refs
   // so it stays a stable, dependency-light callback.
   const tryStart = useCallback(() => {
-    // TEMP [WW-DIAG] — interrupt-flake diagnostic; rip out after confirming.
-    console.log(
-      "[WW-DIAG] tryStart called; armed=",
-      armedRef.current,
-      "status=",
-      statusRef.current,
-      "running=",
-      runningRef.current,
-    );
     // Only re-arm when we should actually be listening.
     if (!armedRef.current || statusRef.current !== "idle") return;
     // Already live (or inside the async start()->onstart window): never call
@@ -89,10 +80,6 @@ export default function WakeWord({ status, onWake }: WakeWordProps) {
       recognition.start();
       // Optimistic guard closes the start()->onstart race (see runningRef).
       runningRef.current = true;
-      // TEMP [WW-DIAG] — interrupt-flake diagnostic; rip out after confirming.
-      console.log(
-        "[WW-DIAG] start() returned no-throw, runningRef set true optimistically",
-      );
       // Request accepted — reset the heal counters.
       failureCountRef.current = 0;
       backoffRef.current = BASE_BACKOFF_MS;
@@ -101,11 +88,6 @@ export default function WakeWord({ status, onWake }: WakeWordProps) {
       // Transient bad state (recognizer mid-teardown after a turn, etc.).
       // Self-heal: schedule a backed-off retry rather than swallow-and-die.
       failureCountRef.current += 1;
-      // TEMP [WW-DIAG] — interrupt-flake diagnostic; rip out after confirming.
-      console.log(
-        "[WW-DIAG] start() THREW, scheduling retry, failures=",
-        failureCountRef.current,
-      );
       if (
         failureCountRef.current >= MAX_CONSECUTIVE_FAILURES &&
         !stuckWarnedRef.current
@@ -162,6 +144,29 @@ export default function WakeWord({ status, onWake }: WakeWordProps) {
 
     recognition.onerror = (event: SpeechRecognitionErrorEvent) => {
       console.log(`[WakeWord] recognition error: ${event.error}`);
+      // A session is ending — clear the running guard so re-arm isn't blocked.
+      // Chrome does NOT reliably fire onend after onerror (esp. no-speech), so
+      // we cannot rely on onend alone to reset this — that was the wedge that
+      // left the wake word deaf after idle silence / an interrupt.
+      runningRef.current = false;
+      // Terminal permission errors can't be recovered by retrying — warn + stop
+      // rather than loop forever on a denial.
+      if (event.error === "not-allowed" || event.error === "service-not-allowed") {
+        console.warn(
+          `[WakeWord] mic blocked (${event.error}) — wake word stopping until page reload.`,
+        );
+        return;
+      }
+      // Transient error (no-speech / aborted / network / audio-capture): re-arm,
+      // coalesced with onend through the shared timer so at most one start()
+      // fires if both events land.
+      if (armedRef.current && statusRef.current === "idle") {
+        clearRestartTimer();
+        restartTimerRef.current = setTimeout(
+          () => tryStartRef.current(),
+          BASE_BACKOFF_MS,
+        );
+      }
     };
 
     // A session actually began — re-affirm the running guard and clear any
@@ -172,8 +177,6 @@ export default function WakeWord({ status, onWake }: WakeWordProps) {
       backoffRef.current = BASE_BACKOFF_MS;
       stuckWarnedRef.current = false;
       clearRestartTimer();
-      // TEMP [WW-DIAG] — interrupt-flake diagnostic; rip out after confirming.
-      console.log("[WW-DIAG] onstart fired, runningRef now", runningRef.current);
     };
 
     // Chrome ends continuous recognition periodically (~every minute), and a
@@ -182,10 +185,15 @@ export default function WakeWord({ status, onWake }: WakeWordProps) {
     // while armed and idle, so we never listen over Mask's own turn.
     recognition.onend = () => {
       runningRef.current = false;
-      // TEMP [WW-DIAG] — interrupt-flake diagnostic; rip out after confirming.
-      console.log("[WW-DIAG] onend fired, runningRef now", runningRef.current);
+      // Re-arm through the shared timer — coalesces with onerror: if both fire,
+      // the second clearRestartTimer() cancels the first's pending timer, so
+      // exactly one tryStart runs (no double-start).
       if (armedRef.current && statusRef.current === "idle") {
-        tryStartRef.current();
+        clearRestartTimer();
+        restartTimerRef.current = setTimeout(
+          () => tryStartRef.current(),
+          BASE_BACKOFF_MS,
+        );
       }
     };
 
