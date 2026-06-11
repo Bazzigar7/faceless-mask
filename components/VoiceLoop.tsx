@@ -9,7 +9,6 @@ import { parseStageTags, matchAssetByQuery } from "@/lib/visualCommands";
 import { startSilenceDetection } from "@/lib/silenceDetector";
 import { type Status } from "./StatusIndicator";
 import WakeWord from "./WakeWord";
-import AbortListener from "./AbortListener";
 
 const MIN_CHUNK_CHARS = 40;
 const SENTENCE_END = /[.!?]\s/;
@@ -566,11 +565,6 @@ export default function VoiceLoop({
       </button>
 
       <WakeWord status={status} onWake={() => startRecording(true)} />
-
-      {/* Phase 3.5.3.1 — detection-only spoken-interrupt probe. Logs on
-          "mask abort" while speaking; no interrupt() call, no pipeline touch
-          (step 2 wires the trigger + canned line). */}
-      <AbortListener status={status} />
 
       <audio ref={audioRef} autoPlay />
     </div>
