@@ -68,6 +68,15 @@ export default function WakeWord({ status, onWake }: WakeWordProps) {
   // a backed-off retry instead of dying silently. Reads everything through refs
   // so it stays a stable, dependency-light callback.
   const tryStart = useCallback(() => {
+    // TEMP [WW-DIAG] — interrupt-flake diagnostic; rip out after confirming.
+    console.log(
+      "[WW-DIAG] tryStart called; armed=",
+      armedRef.current,
+      "status=",
+      statusRef.current,
+      "running=",
+      runningRef.current,
+    );
     // Only re-arm when we should actually be listening.
     if (!armedRef.current || statusRef.current !== "idle") return;
     // Already live (or inside the async start()->onstart window): never call
@@ -80,6 +89,10 @@ export default function WakeWord({ status, onWake }: WakeWordProps) {
       recognition.start();
       // Optimistic guard closes the start()->onstart race (see runningRef).
       runningRef.current = true;
+      // TEMP [WW-DIAG] — interrupt-flake diagnostic; rip out after confirming.
+      console.log(
+        "[WW-DIAG] start() returned no-throw, runningRef set true optimistically",
+      );
       // Request accepted — reset the heal counters.
       failureCountRef.current = 0;
       backoffRef.current = BASE_BACKOFF_MS;
@@ -88,6 +101,11 @@ export default function WakeWord({ status, onWake }: WakeWordProps) {
       // Transient bad state (recognizer mid-teardown after a turn, etc.).
       // Self-heal: schedule a backed-off retry rather than swallow-and-die.
       failureCountRef.current += 1;
+      // TEMP [WW-DIAG] — interrupt-flake diagnostic; rip out after confirming.
+      console.log(
+        "[WW-DIAG] start() THREW, scheduling retry, failures=",
+        failureCountRef.current,
+      );
       if (
         failureCountRef.current >= MAX_CONSECUTIVE_FAILURES &&
         !stuckWarnedRef.current
@@ -154,6 +172,8 @@ export default function WakeWord({ status, onWake }: WakeWordProps) {
       backoffRef.current = BASE_BACKOFF_MS;
       stuckWarnedRef.current = false;
       clearRestartTimer();
+      // TEMP [WW-DIAG] — interrupt-flake diagnostic; rip out after confirming.
+      console.log("[WW-DIAG] onstart fired, runningRef now", runningRef.current);
     };
 
     // Chrome ends continuous recognition periodically (~every minute), and a
@@ -162,6 +182,8 @@ export default function WakeWord({ status, onWake }: WakeWordProps) {
     // while armed and idle, so we never listen over Mask's own turn.
     recognition.onend = () => {
       runningRef.current = false;
+      // TEMP [WW-DIAG] — interrupt-flake diagnostic; rip out after confirming.
+      console.log("[WW-DIAG] onend fired, runningRef now", runningRef.current);
       if (armedRef.current && statusRef.current === "idle") {
         tryStartRef.current();
       }
