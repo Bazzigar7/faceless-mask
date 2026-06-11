@@ -161,3 +161,63 @@ Order of operations from here:
 7. Pitch Mask Licensing to first 3 colleges/bootcamps
 
 Each step is a real piece of work. Sequencing protects focus. Mask is step one because everything else depends on it existing.
+
+---
+
+## Future direction: Mask as Presentation Co-Host (V2+)
+
+> Captured June 11, 2026, during the Mask V1 classroom-rig design. This is a
+> product-vision note, NOT V1 scope. Prove Mask in the GRD classroom first
+> (same discipline as Mask Licensing), then explore this.
+
+### The reframe
+Today a presenter holds a clicker to advance dead slides: person + slides +
+clicker. The Faceless reframe: the same hand-held button summons a live AI
+**co-host** instead of a next slide — person + Mask. Press the clicker and Mask
+is present: presenting alongside you, pulling the right visual, riffing,
+answering, reacting. The clicker stops being "next slide" and becomes "my AI
+co-host, on demand."
+
+This expands Mask beyond the classroom to **anyone who presents** — lectures,
+pitches, talks, demos. It reframes Faceless from "AI for our classroom" to "a
+new way to present: you + a co-host, not you + slides." On-brand: Faceless was
+always about giving the faceless a presence; this gives every presenter one.
+
+### The layered control model (emerged from V1 rig design)
+A robust listening system has layers that each degrade gracefully to the one
+below — this principle holds for both V1 and the V2 vision:
+- **Physical button = deterministic floor.** A clicker keypress the browser
+  catches → Mask listens / stops / advances. Never drowned out, never flakes.
+  This is the reliability layer you never fall through.
+- **Wake word = hands-free convenience** on top of the button.
+- **Always-on listening = the eventual goal** — Mask continuously listening,
+  knows when addressed, handles question + command + stop as one model. Only
+  feasible once a close-mic rig proves the recognizer can be trusted over
+  Mask's own audio in a room. Open architecture question, not yet designed.
+
+### V1 classroom rig (decided June 11, 2026)
+Three pieces, three jobs, no device overloaded:
+- **Mic (voice in):** DJI Mic Mini — wireless clip-on, on the body, close to
+  mouth, separate from the speaker. Close-mic placement is the hardware fix for
+  "Mask hears himself," worth more than any software self-guard.
+- **Trigger (control):** Logitech R400 — USB-dongle clicker; next/prev buttons
+  send Page Down / Page Up, which the browser catches as keystrokes. This is
+  the deterministic "Mask listen / stop" floor. (Multi-button → future map to
+  listen / abort / advance-visual.)
+- **Output (Mask's voice):** existing Bluetooth room speaker. Separate audio
+  path from the mic.
+- **Connectivity (USB-A only):** the college laptop exposes USB-A ports only.
+  The R400 dongle is USB-A native; the wireless mic receiver likely needs a
+  USB-C→A adapter (or pick a USB-A-native lav). Sort this before the session.
+
+> **OPEN ITEM — dry-run the actual college laptop before sessions.** It is not
+> our machine: confirm it allows USB devices (R400 dongle + mic receiver),
+> grants Chrome mic permission, and can pair the Bluetooth speaker. IT lockdown
+> is the real risk — test the full rig on the real laptop ahead of time, never
+> first on the day.
+
+### Why the clicker is the strategic piece
+The mic just listens. The **clicker is the control surface** — and in the V2
+vision it's the clicker in your hand that *summons the co-host*. The same cheap
+device that's V1's reliability floor becomes V2's "co-host summon button."
+Buy for V1, design toward V2.

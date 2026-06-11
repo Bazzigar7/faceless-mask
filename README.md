@@ -50,7 +50,7 @@ The best teacher anyone remembers from school is the one who told funny stories 
 | Speech-to-text | OpenAI Whisper (`whisper-1`) | Auto-detects code-mix English/Tamil/Hindi. Pivoted from Deepgram in Phase 1 (see Known reversals). |
 | Text-to-speech | ElevenLabs Turbo v2.5 | Flipped from Multilingual v2 on 2026-06-08 (Phase 3.2). TTFB ~150ms; Tamil/Hindi confirmed fine. See Known Reversals #2. |
 | Wake word | Browser-native Web Speech API (Chrome-only, V1) | Picovoice Porcupine discontinued its free tier (see Known reversals). Web Speech ships V1 hands-free "Hey Mask" activation. ✅ Phase 3.7 (2026-06-03). |
-| Animation | SVG + Tailwind transitions + rAF | Framer Motion not installed; deferred until Mode 2/3 transitions are needed in Phase 3. |
+| Animation | SVG + Tailwind transitions + rAF + Framer Motion | Framer Motion 11.18.2 installed in Phase 3.3.4 (commit 5fb081f); drives Stage-view mode transitions (~400ms ease-in-out). |
 | Hosting | Vercel | Hobby tier; live at https://faceless-mask.vercel.app (shipped May 12, 2026) |
 
 ### Known reversals
@@ -444,6 +444,14 @@ Shipped 2026-06-03, production-verified on faceless-mask.vercel.app. Engine pivo
 - [x] 3.7 (2/2): Hands-free activation — onWake → `startRecording(true)`; end-of-speech auto-stop via `lib/silenceDetector.ts` (Web Audio AnalyserNode RMS VAD, ~1.3s sub-threshold after a speech-started latch) + `MAX_RECORDING_MS` (15s) ceiling backstop. Hands-free only — push-to-talk button behavior unchanged. ✅ shipped 2026-06-03 (commit 80fe525)
 - [ ] Wake-word stop trigger ("Hey Mask stop") — still deferred; Phase 3.5 temp button-trigger remains (see Phase 3.5)
 - [ ] Follow-up conversation mode — see Deferred decisions
+
+### Phase 3.7.1 — Wake word re-arm reliability ✅ (2026-06-11)
+Live testing surfaced the wake word going deaf — after one turn, after an interrupt, and after idle silence. Three commits this session fixed it, root-caused gate-by-gate:
+- [x] Revert the "mask abort" detection probe (Phase 3.5.3.1, commit 32ce306) — `fa79833`. A second `SpeechRecognition` (AbortListener, speaking-gated) collided with WakeWord on the `speaking→idle` handoff: Chrome allows one live recognizer and `abort()` is async, so `WakeWord.start()` fired while AbortListener was still capturing → throw → permanent death. Probe PARKED, not abandoned (revisit voice-abort once the close-mic rig arrives; the R400 clicker may be the better abort trigger anyway).
+- [x] Self-healing re-arm — `6aa196b`. A single `tryStart()` replaces every bare `recognition.start()`; a thrown `InvalidStateError` schedules a backed-off retry (150ms→1000ms cap) instead of dying. `runningRef` guards the async `start()→onstart` gap against double-start; a one-time `console.warn` after 5 consecutive failures makes a genuinely stuck recognizer (mic revoked / device gone) visible instead of silent.
+- [x] Re-arm on `onerror`, not just `onend` — `8793e17`. Final root cause of deaf-after-interrupt **and** deaf-after-90s-idle: a session ends via `onerror` (`no-speech`) with NO following `onend`, so `runningRef` stayed pinned true and the re-arm guard blocked every restart. `onerror` now clears the flag and re-arms (coalesced with `onend` through the shared timer, so at most one `start()` fires); terminal mic-permission errors (`not-allowed` / `service-not-allowed`) warn + stop instead of looping. **Confirmed by smoke across all three paths: multi-turn hands-free, interrupt-then-wake, and 90s+ idle-then-wake all re-trigger.**
+
+> **Durable lesson — Chrome Web Speech API:** a recognition session can end via `onerror` (e.g. `no-speech`) with **no** following `onend`. Never key recognizer cleanup or re-arm solely on `onend` — reset state on `onerror` too. Reusable for any future recognition work (always-on listening mode, V2 on-device engines).
 
 ### Phase 3 — remaining (post-3.3)
 - [ ] Phase 3.4 — Activity mode (Mode 3) — deferred per Phase 3.3 prompt

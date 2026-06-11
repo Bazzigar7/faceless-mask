@@ -52,15 +52,16 @@ export default function VoiceLoop({
   // without `assets` in its deps — assetsRef bypasses stale closure.
   const assetsRef = useRef<Asset[]>([]);
 
-  // Phase 3.5 interrupt engine plumbing (3.5.1 dormant infra).
+  // Phase 3.5 interrupt engine plumbing (ACTIVE since 3.5.2 — wired to the
+  // Stop-button interrupt() trigger).
   // pipelineAbortRef holds the per-pipeline AbortController so its
   // signal can be threaded into chat/STT/ttsChunk fetches and
-  // cancelled by interrupt() (lands in 3.5.2 with the temp trigger).
-  // audioEndResolveRef stashes the resolve fn of the line-320 audio-
-  // end-await Promise so interrupt() can unwedge it on a pause path
+  // cancelled by interrupt() (the Stop affordance during "speaking").
+  // audioEndResolveRef stashes the resolve fn of the audio-end-await
+  // Promise so interrupt() can unwedge it on a pause path
   // (audio.pause() does NOT fire "ended"). On a normal turn the
-  // "ended" event still resolves the Promise first — these refs are
-  // pure infrastructure with no reachable caller in 3.5.1.
+  // "ended" event still resolves the Promise first; on an interrupt the
+  // stashed resolve is the live caller.
   const pipelineAbortRef = useRef<AbortController | null>(null);
   const audioEndResolveRef = useRef<(() => void) | null>(null);
   // interruptingRef is LOAD-BEARING FOR TOUCH CORRECTNESS, not merely
@@ -361,14 +362,14 @@ export default function VoiceLoop({
         }
 
         // Wait for playback to end before going idle.
-        // Resolve fn is also stashed in audioEndResolveRef so the
-        // future interrupt() (3.5.2) can unwedge this await when
-        // audio.pause() is used to stop mid-playback — pause does
-        // NOT fire "ended", so without the external handle this
+        // Resolve fn is also stashed in audioEndResolveRef so
+        // interrupt() (the Stop trigger, ACTIVE since 3.5.2) can unwedge
+        // this await when audio.pause() is used to stop mid-playback —
+        // pause does NOT fire "ended", so without the external handle this
         // Promise would hang forever and finally would never run.
-        // On a normal turn, the "ended" event fires first and
-        // resolves the Promise via onEnd; the manual resolve path
-        // is unreachable in 3.5.1 (no caller).
+        // On a normal turn, the "ended" event fires first and resolves
+        // the Promise via onEnd; on an interrupt the stashed manual
+        // resolve is the live caller.
         await new Promise<void>((resolve) => {
           const a = audioRef.current!;
           audioEndResolveRef.current = resolve;
