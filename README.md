@@ -453,6 +453,9 @@ Live testing surfaced the wake word going deaf — after one turn, after an inte
 
 > **Durable lesson — Chrome Web Speech API:** a recognition session can end via `onerror` (e.g. `no-speech`) with **no** following `onend`. Never key recognizer cleanup or re-arm solely on `onend` — reset state on `onerror` too. Reusable for any future recognition work (always-on listening mode, V2 on-device engines).
 
+### Voice discipline + topic-agnostic banks ✅ (2026-06-15)
+- [x] Verbosity fix + topic-agnostic voice + AI/content banks — `6e1186e` added per-category length budgets and a topic-agnostic "what you teach" framing → `243c738` replaced the time-based budgets with a one-idea / one-example / hand-back / wait rhythm (a model can't sense clock-time) plus Hard rule 9 (stop-on-question) → `dfb5909` broadened the joke bank (30→36, new `ai` + `content` categories) and story bank (9→13) beyond crypto. Personality snapshot re-frozen across the three commits: 18,828/305 → 23,433/352 bytes/lines.
+
 ### Phase 3 — remaining (post-3.3)
 - [ ] Phase 3.4 — Activity mode (Mode 3) — deferred per Phase 3.3 prompt
 - [ ] Asset upload UI (app/library/page.tsx)
@@ -539,6 +542,6 @@ Today each turn needs a fresh "Hey Mask" (or button press). FOLLOW-UP: after Mas
 
 ## Scope addition: AI alongside blockchain
 
-Mask is not just a blockchain co-host. Curriculum will cover both AI and blockchain, framed as "modern earning skills." This means Mask's personality, story bank, and activities will expand to include AI topics — Claude Code, vibe coding, AI for content creation, building AI agents, etc.
+Mask is not just a blockchain co-host. Curriculum will cover both AI and blockchain, framed as "modern earning skills." This means Mask's personality, story bank, and activities expand to include AI topics — Claude Code, vibe coding, AI for content creation, building AI agents, etc. As of 2026-06-15 the joke bank (new `ai` + `content` categories) and the story bank have expanded to AI/content; activities remain pending.
 
 Curriculum design happens separately (see Faceless EdTech strategy doc). Mask's prompt updates as curriculum grows.
