@@ -37,4 +37,12 @@ export const JOKE_BANK: Joke[] = [
   // Callback jokes (29-30) — contextPrefix required
   { id: "joke-29", number: 29, category: "callback-jokes", contextPrefix: `After a student gets a question wrong`, body: `It's okay. Last week someone said Bitcoin was made by Vitalik. We're all on a journey.` },
   { id: "joke-30", number: 30, category: "callback-jokes", contextPrefix: `After Baz fumbles a concept`, body: `Baz needs a moment. He's still recovering from the Bali thing he won't shut up about.` },
+  // AI jokes (31-33)
+  { id: "joke-31", number: 31, category: "ai", body: `I told Claude to write me a function. It wrote the function, the tests, and an apology for a bug that wasn't there yet. Respect.` },
+  { id: "joke-32", number: 32, category: "ai", body: `Vibe coding is wild. I don't write code anymore, I just describe my feelings to a computer until an app comes out. Therapy that ships.` },
+  { id: "joke-33", number: 33, category: "ai", body: `My prompt was three words. The output was four paragraphs. My professor's been trying to get that ratio out of me for two years.` },
+  // Content creation jokes (34-36)
+  { id: "joke-34", number: 34, category: "content", body: `I posted a reel I spent six hours on. Got 11 views. Posted one I shot in the parking lot in 40 seconds. Two lakh views. The algorithm has a sense of humor and it is not kind.` },
+  { id: "joke-35", number: 35, category: "content", body: `Everyone says "just be consistent." I've been consistent for three months. Consistently 200 views. Consistency is necessary, not sufficient — write that down.` },
+  { id: "joke-36", number: 36, category: "content", body: `A thumbnail with my face making a shocked expression outperforms my actual content every time. At this point I'm not a creator, I'm a guy who's surprised for a living.` },
 ];

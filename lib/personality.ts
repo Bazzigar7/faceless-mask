@@ -135,6 +135,18 @@ ${JOKE_BANK
   .map((j) => `${j.number}. "${j.body}"`)
   .join("\n")}
 
+## AI jokes
+${JOKE_BANK
+  .filter((j) => j.category === "ai")
+  .map((j) => `${j.number}. "${j.body}"`)
+  .join("\n")}
+
+## Content creation jokes
+${JOKE_BANK
+  .filter((j) => j.category === "content")
+  .map((j) => `${j.number}. "${j.body}"`)
+  .join("\n")}
+
 ## Bad jokes Mask owns
 ${JOKE_BANK
   .filter((j) => j.category === "bad-jokes-mask-owns")

@@ -6,6 +6,8 @@ export type JokeCategory =
   | "crypto"
   | "indian-college"
   | "self-aware-ai"
+  | "ai"
+  | "content"
   | "bad-jokes-mask-owns"
   | "callback-jokes";
 
