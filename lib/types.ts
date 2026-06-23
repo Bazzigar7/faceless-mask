@@ -32,7 +32,9 @@ export type Asset = {
   url: string;
   storage_path: string | null;
   tags: string[];
+  exact_phrases: string[];
   alt_text: string | null;
+  description: string | null;
   added_by: string;
   created_at: string;
 };

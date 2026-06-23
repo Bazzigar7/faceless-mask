@@ -12,6 +12,7 @@ function isAsset(row: AssetRow): row is Asset {
     (row.type === 'image' || row.type === 'video') &&
     row.url !== null &&
     row.tags !== null &&
+    Array.isArray(row.exact_phrases) &&
     row.added_by !== null &&
     row.created_at !== null
   );
@@ -43,7 +44,7 @@ function isAsset(row: AssetRow): row is Asset {
 export async function listAssets(): Promise<Asset[]> {
   const { data, error } = await supabase
     .from('assets')
-    .select('id, type, url, storage_path, tags, alt_text, added_by, created_at')
+    .select('id, type, url, storage_path, tags, exact_phrases, alt_text, description, added_by, created_at')
     .order('created_at', { ascending: true });
 
   if (error) {

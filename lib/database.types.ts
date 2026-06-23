@@ -83,6 +83,8 @@ export type Database = {
           added_by: string | null
           alt_text: string | null
           created_at: string | null
+          description: string | null
+          exact_phrases: string[] | null
           id: string
           storage_path: string | null
           tags: string[] | null
@@ -93,6 +95,8 @@ export type Database = {
           added_by?: string | null
           alt_text?: string | null
           created_at?: string | null
+          description?: string | null
+          exact_phrases?: string[] | null
           id?: string
           storage_path?: string | null
           tags?: string[] | null
@@ -103,6 +107,8 @@ export type Database = {
           added_by?: string | null
           alt_text?: string | null
           created_at?: string | null
+          description?: string | null
+          exact_phrases?: string[] | null
           id?: string
           storage_path?: string | null
           tags?: string[] | null
