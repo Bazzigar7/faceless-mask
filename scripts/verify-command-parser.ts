@@ -1,0 +1,132 @@
+// Verifies parseCommand() in lib/commandParser.ts across 16 fixtures
+// (show, clear, negative, normalization, robustness branches).
+// Run via: npm run verify:commands
+// Exits 0 when all fixtures pass, 1 on any failure with per-fixture report.
+
+import assert from "node:assert/strict";
+import { parseCommand, type StageCommand } from "../lib/commandParser";
+
+type CommandFixture = {
+  name: string;
+  input: string;
+  expected: StageCommand;
+};
+
+const FIXTURES: CommandFixture[] = [
+  // SHOW
+  {
+    name: "show — 'mask pull up the btc image'",
+    input: "mask pull up the btc image",
+    expected: { command: "show", query: "btc image" },
+  },
+  {
+    name: "show — 'hey mask show them the pizza day' (long address + verb + article strip)",
+    input: "hey mask show them the pizza day",
+    expected: { command: "show", query: "pizza day" },
+  },
+  {
+    name: "show — 'mask display evolution of web'",
+    input: "mask display evolution of web",
+    expected: { command: "show", query: "evolution of web" },
+  },
+  {
+    name: "show (compound) — 'and explain' tail left in query unchanged",
+    input: "mask pull up the web123 evolution image and explain",
+    expected: { command: "show", query: "web123 evolution image and explain" },
+  },
+  // CLEAR
+  {
+    name: "clear — 'mask clear the stage'",
+    input: "mask clear the stage",
+    expected: { command: "clear" },
+  },
+  {
+    name: "clear — 'hey mask close this'",
+    input: "hey mask close this",
+    expected: { command: "clear" },
+  },
+  {
+    name: "clear — 'mask clear that'",
+    input: "mask clear that",
+    expected: { command: "clear" },
+  },
+  // NEGATIVES — anti-false-fire (most critical branch)
+  {
+    name: "none — addressed, question, no show/clear verb",
+    input: "mask what is web 3",
+    expected: { command: "none" },
+  },
+  {
+    name: "none — show verb present but NO address word (must not fire)",
+    input: "i was trying to pull up my notes earlier",
+    expected: { command: "none" },
+  },
+  {
+    name: "none — show verb at sentence start, NO address word",
+    input: "pull up the btc image",
+    expected: { command: "none" },
+  },
+  {
+    name: "none — address only, no instruction",
+    input: "mask",
+    expected: { command: "none" },
+  },
+  {
+    name: "none — address + verb but empty query after strip",
+    input: "mask pull up",
+    expected: { command: "none" },
+  },
+  // NORMALIZATION
+  {
+    name: "normalization — mixed case, extra spaces, leading comma after address",
+    input: "  Mask,  Pull Up   the BTC Image  ",
+    expected: { command: "show", query: "btc image" },
+  },
+  {
+    name: "normalization — 'hey mask' address-only, longest address word, no instruction",
+    input: "hey mask",
+    expected: { command: "none" },
+  },
+  {
+    name: "robustness — Whisper period after address ('mask. pull up the btc image')",
+    input: "mask. pull up the btc image",
+    expected: { command: "show", query: "btc image" },
+  },
+  {
+    name: "none — word starting with 'mask' is not an address ('masking tape...')",
+    input: "masking tape is useful for posters",
+    expected: { command: "none" },
+  },
+];
+
+let passed = 0;
+let failed = 0;
+
+function runFixture(f: CommandFixture, index: number): void {
+  try {
+    const result = parseCommand(f.input);
+    assert.deepStrictEqual(
+      result,
+      f.expected,
+      `expected ${JSON.stringify(f.expected)}, got ${JSON.stringify(result)}`,
+    );
+    passed++;
+    console.log(`  ✅ [cmd ${index + 1}/${FIXTURES.length}] ${f.name}`);
+  } catch (err) {
+    failed++;
+    console.error(`  ❌ [cmd ${index + 1}/${FIXTURES.length}] ${f.name}`);
+    console.error(`     ${err instanceof Error ? err.message : String(err)}`);
+  }
+}
+
+console.log("parseCommand fixtures:");
+FIXTURES.forEach((f, i) => runFixture(f, i));
+
+const total = passed + failed;
+if (failed === 0) {
+  console.log(`\n✅ ${passed}/${total} fixtures passed`);
+  process.exit(0);
+} else {
+  console.error(`\n❌ ${passed}/${total} fixtures passed (${failed} failed)`);
+  process.exit(1);
+}
