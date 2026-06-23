@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { unstable_noStore as noStore } from "next/cache";
 import { listAssets } from "@/lib/listAssets";
+import DeleteAssetButton from "@/components/DeleteAssetButton";
 
 export const dynamic = "force-dynamic";
 
@@ -39,6 +40,7 @@ export default async function AssetsPage() {
                 <th className="text-left py-3 px-4 font-semibold">Exact phrases</th>
                 <th className="text-left py-3 px-4 font-semibold">Description</th>
                 <th className="text-left py-3 px-4 font-semibold">Preview</th>
+                <th className="text-left py-3 px-4 font-semibold">Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -62,6 +64,9 @@ export default async function AssetsPage() {
                     ) : (
                       <span className="text-zinc-500 text-sm">video</span>
                     )}
+                  </td>
+                  <td className="py-3 px-4">
+                    <DeleteAssetButton id={asset.id} />
                   </td>
                 </tr>
               ))}
