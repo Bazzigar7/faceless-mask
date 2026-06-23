@@ -93,8 +93,23 @@ export function parseStageTags(text: string): {
   return { strippedText, events };
 }
 
+function normalizePhrase(s: string): string {
+  return s.toLowerCase().trim().replace(/\s+/g, ' ');
+}
+
 /**
  * Score-based fuzzy match from a query string to the best Asset.
+ *
+ * Resolution is two-tiered:
+ *
+ * TIER 1 — exact_phrases (deterministic):
+ *   The normalized query is compared against each asset's exact_phrases
+ *   entries (also normalized). First asset whose phrase equals the query
+ *   wins immediately — no scoring, no fallthrough.
+ *
+ * TIER 2 — fuzzy tags (unchanged):
+ *   If no exact phrase matches, falls through to token-intersection scoring
+ *   against asset.tags. Behavior is identical to the original implementation.
  *
  * Both query and tags are lowercased and tokenized. Tag tokens are
  * additionally split on hyphens so a tag like 'pizza-day' contributes
@@ -113,6 +128,19 @@ export function matchAssetByQuery(
   query: string,
   assets: Asset[],
 ): Asset | null {
+  if (assets.length === 0) return null;
+
+  // Tier 1: exact_phrases — deterministic, normalized equality
+  const normalizedQuery = normalizePhrase(query);
+  if (normalizedQuery.length > 0) {
+    for (const asset of assets) {
+      for (const phrase of asset.exact_phrases) {
+        if (normalizePhrase(phrase) === normalizedQuery) return asset;
+      }
+    }
+  }
+
+  // Tier 2: fuzzy tag scoring — unchanged from original
   const queryTokens = new Set(
     query
       .toLowerCase()
@@ -120,7 +148,7 @@ export function matchAssetByQuery(
       .filter((t) => t.length > 0),
   );
 
-  if (queryTokens.size === 0 || assets.length === 0) return null;
+  if (queryTokens.size === 0) return null;
 
   let bestAsset: Asset | null = null;
   let bestScore = 0;

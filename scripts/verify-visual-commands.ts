@@ -64,7 +64,7 @@ const SEED_ASSETS: Asset[] = [
     url: "https://example.com/pizza.jpg",
     storage_path: null,
     tags: ["pizza", "pizza-day", "laszlo", "bitcoin-pizza"],
-    exact_phrases: [],
+    exact_phrases: ["pizza day", "the pizza story"],
     alt_text: "Pizza day placeholder image",
     description: null,
     added_by: "baz",
@@ -90,6 +90,37 @@ const SEED_ASSETS: Asset[] = [
     tags: ["test", "video", "placeholder"],
     exact_phrases: [],
     alt_text: "Big Buck Bunny test video",
+    description: null,
+    added_by: "baz",
+    created_at: "2026-05-17T00:00:00Z",
+  },
+];
+
+// Two-asset slice used by the EXACT-BEATS-FUZZY fixture.
+// -010 has tags ["pizza","day"] and no exact phrases — it would score 2
+// on "pizza day" and WIN Tier 2.  -003 has exact_phrases:["pizza day"] but
+// empty tags — it would score 0 and LOSE Tier 2.  Tier 1 must return -003.
+const EXACT_BEATS_FUZZY_ASSETS: Asset[] = [
+  {
+    id: "00000000-0000-0000-0000-000000000010",
+    type: "image",
+    url: "https://example.com/fuzzy.png",
+    storage_path: null,
+    tags: ["pizza", "day"],
+    exact_phrases: [],
+    alt_text: null,
+    description: null,
+    added_by: "baz",
+    created_at: "2026-05-17T00:00:00Z",
+  },
+  {
+    id: "00000000-0000-0000-0000-000000000003",
+    type: "image",
+    url: "https://example.com/pizza.jpg",
+    storage_path: null,
+    tags: [],
+    exact_phrases: ["pizza day"],
+    alt_text: null,
     description: null,
     added_by: "baz",
     created_at: "2026-05-17T00:00:00Z",
@@ -305,6 +336,34 @@ const MATCH_FIXTURES: MatchFixture[] = [
   {
     name: "case insensitive — PIZZA Day BITCOIN → -003",
     query: "PIZZA Day BITCOIN",
+    assets: SEED_ASSETS,
+    expectedId: "00000000-0000-0000-0000-000000000003",
+  },
+  // --- Tier 1 exact_phrases fixtures ---
+  {
+    name: "exact hit — 'pizza day' matches pizza via exact_phrases (Tier 1)",
+    query: "pizza day",
+    assets: SEED_ASSETS,
+    expectedId: "00000000-0000-0000-0000-000000000003",
+  },
+  {
+    name: "exact normalization — '  Pizza  Day  ' matches pizza via normalized exact_phrases",
+    query: "  Pizza  Day  ",
+    assets: SEED_ASSETS,
+    expectedId: "00000000-0000-0000-0000-000000000003",
+  },
+  {
+    // -010 has tags ["pizza","day"] and scores 2 on "pizza day" — it would win Tier 2.
+    // -003 has exact_phrases:["pizza day"] and empty tags — it scores 0 on Tier 2.
+    // Tier 1 must return -003 despite -010 being the fuzzy winner.
+    name: "exact beats fuzzy — exact_phrases winner overrides higher-scoring fuzzy asset",
+    query: "pizza day",
+    assets: EXACT_BEATS_FUZZY_ASSETS,
+    expectedId: "00000000-0000-0000-0000-000000000003",
+  },
+  {
+    name: "no exact match falls through to fuzzy — 'laszlo' hits pizza via Tier 2 tags",
+    query: "laszlo",
     assets: SEED_ASSETS,
     expectedId: "00000000-0000-0000-0000-000000000003",
   },
