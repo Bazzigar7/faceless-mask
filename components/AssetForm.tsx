@@ -62,8 +62,7 @@ export default function AssetForm() {
       return;
     }
 
-    const { signedUrl, token, path } = (await signRes.json()) as {
-      signedUrl: string;
+    const { token, path } = (await signRes.json()) as {
       token: string;
       path: string;
     };
