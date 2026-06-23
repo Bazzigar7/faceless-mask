@@ -94,14 +94,14 @@ find app/ components/ lib/ docs/ supabase/ scripts/ -type f -not -path '*/node_m
 For what's architecturally where:
 - `app/` — Next.js App Router pages and API routes. `/` is the voice-loop stage. `/admin/*` is the session/track/cohort admin panel (gated by Basic Auth middleware).
 - `components/` — UI primitives. VoiceLoop orchestrates the STT → chat → TTS pipeline. Mask renders the animated face. Subtitles renders the karaoke bar.
-- `lib/` — pure helpers, hooks, and the personality prompt. Includes the prompt-cache wiring (formatSessionContext, sessionContext), the alignment/viseme primitives (findActiveSentence, useLipSync, useCurrentWord, visemeMapping, wordSegments), Supabase client + types, and the brief-bank parser system under lib/banks/.
+- `lib/` — pure helpers, hooks, and the personality prompt. Includes the prompt-cache wiring (formatSessionContext, sessionContext), the alignment/viseme primitives (findActiveSentence, useLipSync, useCurrentWord, visemeMapping, wordSegments), Supabase client + types, the brief-bank parser system under lib/banks/, stage-command parsing (visualCommands.ts — parseStageTags + matchAssetByQuery; commandParser.ts — address-gated parseCommand), and asset helpers (createAsset.ts, listAssets.ts).
 - `docs/` — strategy, polish-backlog, curriculum-ideas. Read these to understand company context and what's pending.
-- `supabase/` — migrations (4 deployed: initial_schema, test_session_seed, turns_table, assets_tighten_and_seed).
-- `scripts/` — smoke tests + the env loader.
+- `supabase/` — migrations (6 deployed: initial_schema, test_session_seed, turns_table, assets_tighten_and_seed, enable_rls_public_tables, assets_description_and_phrase).
+- `scripts/` — smoke tests, the env loader, and fixture harnesses: verify:visual (32 fixtures — parseStageTags + matchAssetByQuery), verify:commands (16 fixtures — parseCommand), verify:prompt (byte-lock).
 - `prompts/` — historical Claude Code prompts used to kick off each phase. Read-only archive.
 - `middleware.ts` — root-level Next.js middleware. Basic Auth gate on /admin and /api/admin only (Phase 3.1.2.1).
 
-Forward-looking files not yet built (Phase 3+): stage view components, visual command parser, wake word integration, asset library manager. See Build Phases below for the sequencing.
+Forward-looking files not yet built (Phase 3+): stage view components, wake word integration. (Visual command parser and asset library admin have shipped — see Build Phases.)
 
 Note: `supabase/seed.sql` is not present. Supabase CLI v2.98+ no longer auto-creates it on `supabase init`. Schema lives in `migrations/`; we don't need a seed file.
 
@@ -128,7 +128,7 @@ That's a callback that wouldn't be possible without this structure.
 
 ## Pre-session approval flow
 
-Admin panel (/admin) manages sessions. Asset library and visual content management lives at /library in Phase 3.
+Admin panel (/admin) manages sessions. Asset library and visual content management is at /admin/assets (upload, list, delete) — consolidated into the admin panel rather than a standalone /library route.
 
 Baz never goes into a session blind. 15-30 minutes before each session, Baz opens the admin panel and sees:
 
@@ -305,7 +305,9 @@ create table assets (
   url text,
   storage_path text,
   tags text[] not null,
+  exact_phrases text[] not null default '{}',
   alt_text text,
+  description text,
   added_by text default 'baz',
   created_at timestamptz default now()
 );
@@ -417,6 +419,18 @@ Shipped 2026-06-08 (flip commit 3a25927 + doc-sweep). TTS model swapped Multilin
 - [x] 3.3.6: Idle timeout — Visual auto-exits to Solo after 10s idle ✅ shipped 2026-05-25 (commit 30fa2db)
 - [ ] 3.3.7: Replace placeholder assets with curated set (also re-sync the personality.ts asset whitelist to the new tags)
 
+### Asset library CRUD ✅ (2026-06-24)
+- [x] Asset schema extended — added `description` (text, nullable) + `exact_phrases` (text[], not null, default '{}') columns via migration `20260624000000_assets_description_and_phrase.sql`; types synced in `lib/database.types.ts` and `lib/types.ts` — `57e882b`
+- [x] Asset upload endpoints — `/api/admin/assets/sign` mints a signed storage URL (service-role); browser uploads direct via `supabase.storage.uploadToSignedUrl`; `/api/admin/assets` records the row with public URL derived via synchronous `getPublicUrl`. `lib/createAsset.ts` mirrors createSession pattern — `ae589f0`
+- [x] Asset admin UI — `app/admin/assets/` (list with preview, tags, exact phrases, description) + `app/admin/assets/new/` (upload form, phase labels, orphan-case message) — `2725541` + build fix `b29b4a8`
+- [x] Asset delete — `app/api/admin/assets/[id]` DELETE: file-first ordering (storage remove before row delete; partial failure leaves visible retryable row); `components/DeleteAssetButton.tsx` confirm + refresh — `ca65b75`
+
+### Deterministic voice trigger — IN PROGRESS (2026-06-24)
+- [x] `matchAssetByQuery` exact_phrases tier — Tier 1 normalized equality check against `asset.exact_phrases` before Tier 2 fuzzy tag scoring; `normalizePhrase()` applied to both sides; verify:visual 28→32 fixtures — `e5eabd7`
+- [x] `parseCommand(transcript)` — address-gated deterministic classifier: ADDRESS_WORDS required at transcript start (anti-false-fire gate); accepts post-address punctuation (Whisper period/comma/etc); SHOW_VERBS strip + light article strip yields query; CLEAR_PHRASES; vocabulary in editable arrays; `lib/commandParser.ts`; verify:commands 16 fixtures incl. no-address negatives + word-boundary rejection — `b3ad066`
+- [ ] Wire `parseCommand` into VoiceLoop — intercept transcript after STT, before chat call; show → `matchAssetByQuery` → `setMatchedAsset`; clear → `setMatchedAsset(null)`; kill 10s auto-clear; none → fall through to Claude as today
+- [ ] Neuter Claude's `<stage>` emission in personality.ts once deterministic path is live
+
 **Hard constraints during Phase 3.3** (relax after 3.3 ships):
 - `lib/personality.ts` — locked (controls voice-loop output)
 - `app/api/chat/route.ts` — locked per Path B decision in 3.3.1 (3.3.3 parses stage tags client-side, not via server stream change)
@@ -458,7 +472,7 @@ Live testing surfaced the wake word going deaf — after one turn, after an inte
 
 ### Phase 3 — remaining (post-3.3)
 - [ ] Phase 3.4 — Activity mode (Mode 3) — deferred per Phase 3.3 prompt
-- [ ] Asset upload UI (app/library/page.tsx)
+- [x] Asset upload/list/delete UI — shipped at app/admin/assets/ (not app/library/) — see Asset library CRUD above
 - [x] "Hey Mask" wake word — shipped as Phase 3.7 (Web Speech API, not Picovoice; 2026-06-03)
 - [ ] Streaming STT (revisit Deepgram or Whisper streaming)
 - [ ] Quiz generator from transcript
