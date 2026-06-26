@@ -19,6 +19,9 @@ const SILENCE_STOP_MS = 1300; // sub-threshold after speech → auto-stop
 const SILENCE_THRESHOLD = 0.02; // normalized RMS gate (tune in smoke)
 const MAX_RECORDING_MS = 15000; // hard ceiling — runaway backstop
 
+const SHOW_ACKS = ["Here it is", "Got it", "On screen", "There we go"];
+const CLEAR_ACKS = ["Cleared", "Done", "All clear"];
+
 export default function VoiceLoop({
   onStatusChange,
   onVisemeChange,
@@ -50,6 +53,7 @@ export default function VoiceLoop({
   // Read inside runPipeline's streaming loop, which is useCallback'd
   // without `assets` in its deps — assetsRef bypasses stale closure.
   const assetsRef = useRef<Asset[]>([]);
+  const stagedAssetRef = useRef<Asset | null>(null);
 
   // Phase 3.5 interrupt engine plumbing (ACTIVE since 3.5.2 — wired to the
   // Stop-button interrupt() trigger).
@@ -272,65 +276,89 @@ export default function VoiceLoop({
           return;
         }
 
-        // 2. Init MediaSource for streaming TTS audio
+        // 2. Classify BEFORE opening the pipeline — the silent path (video
+        //    show-only) must never touch MediaSource or the audio-end await
+        //    would hang waiting for a buffer that never fills.
+        const cmd = parseCommand(t);
+        let staged: Asset | null = null;
+        if (cmd.command === "show") {
+          staged = matchAssetByQuery(cmd.query, assetsRef.current) ?? null;
+          if (staged) {
+            onStageChange?.(staged);
+            stagedAssetRef.current = staged;
+          }
+        } else if (cmd.command === "clear") {
+          onStageChange?.(null);
+          stagedAssetRef.current = null;
+        }
+
+        // Video show-only: stage already set; no speech, no pipeline.
+        // finally runs normally and lands in idle.
+        if (cmd.command === "show" && staged !== null && staged.type === "video" && !cmd.explain) {
+          return;
+        }
+
+        // Canned ack (image show-only, clear) vs. Claude (everything else).
+        let cannedAck: string | null = null;
+        if (cmd.command === "show" && staged !== null && !cmd.explain) {
+          cannedAck = SHOW_ACKS[Math.floor(Math.random() * SHOW_ACKS.length)]!;
+        } else if (cmd.command === "clear") {
+          cannedAck = CLEAR_ACKS[Math.floor(Math.random() * CLEAR_ACKS.length)]!;
+        }
+
+        // 3. Open audio pipeline (all speaking paths).
         await initMediaSource();
         const audio = audioRef.current!;
         audio.play().catch(() => {
           /* will start once buffer fills */
         });
 
-        // Deterministic stage ownership: parse the raw transcript and drive
-        // the stage directly, before Claude starts — for snappier, deterministic
-        // control. t still goes to Claude below (parallel, not bypass).
-        const cmd = parseCommand(t);
-        if (cmd.command === "show") {
-          const m = matchAssetByQuery(cmd.query, assetsRef.current);
-          // No match → leave current stage as-is; only an explicit clear clears.
-          if (m) onStageChange?.(m);
-        } else if (cmd.command === "clear") {
-          onStageChange?.(null);
-        }
+        if (cannedAck !== null) {
+          // Canned ack: speak fixed string, no Claude call.
+          setStatus("speaking");
+          ttsChunk(cannedAck, 0).catch((e) => console.error("[VoiceLoop] TTS chunk failed", e));
+        } else {
+          // 4. Chat: stream text, chunk into sentences, fire TTS sequentially.
+          const chatRes = await fetch("/api/chat", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ transcript: t, sessionId }),
+            signal: ac.signal,
+          });
+          if (!chatRes.ok || !chatRes.body) throw new Error(`Chat failed: ${chatRes.status}`);
 
-        // 3. Chat: stream text, chunk into sentences, fire TTS sequentially
-        const chatRes = await fetch("/api/chat", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ transcript: t, sessionId }),
-          signal: ac.signal,
-        });
-        if (!chatRes.ok || !chatRes.body) throw new Error(`Chat failed: ${chatRes.status}`);
+          setStatus("speaking");
 
-        setStatus("speaking");
+          const reader = chatRes.body.getReader();
+          const decoder = new TextDecoder();
+          let buffer = "";
+          let sentenceCounter = 0;
 
-        const reader = chatRes.body.getReader();
-        const decoder = new TextDecoder();
-        let buffer = "";
-        let sentenceCounter = 0;
+          while (true) {
+            const { value, done } = await reader.read();
+            if (done) break;
+            const chunk = decoder.decode(value, { stream: true });
+            buffer += chunk;
 
-        while (true) {
-          const { value, done } = await reader.read();
-          if (done) break;
-          const chunk = decoder.decode(value, { stream: true });
-          buffer += chunk;
-
-          // Flush completed sentences from buffer
-          while (buffer.length >= MIN_CHUNK_CHARS) {
-            const m = buffer.match(SENTENCE_END);
-            if (!m || m.index === undefined) break;
-            const cut = m.index + m[0].length;
-            const sentence = buffer.slice(0, cut).trim();
-            buffer = buffer.slice(cut);
-            const { strippedText } = parseStageTags(sentence);
-            if (strippedText.trim()) ttsChunk(strippedText, sentenceCounter++).catch((e) => console.error("[VoiceLoop] TTS chunk failed", e));
+            // Flush completed sentences from buffer
+            while (buffer.length >= MIN_CHUNK_CHARS) {
+              const m = buffer.match(SENTENCE_END);
+              if (!m || m.index === undefined) break;
+              const cut = m.index + m[0].length;
+              const sentence = buffer.slice(0, cut).trim();
+              buffer = buffer.slice(cut);
+              const { strippedText } = parseStageTags(sentence);
+              if (strippedText.trim()) ttsChunk(strippedText, sentenceCounter++).catch((e) => console.error("[VoiceLoop] TTS chunk failed", e));
+            }
           }
+
+          // Flush remaining buffer as final TTS chunk
+          const tail = buffer.trim();
+          const { strippedText: tailStripped } = parseStageTags(tail);
+          if (tailStripped.trim()) ttsChunk(tailStripped, sentenceCounter++).catch((e) => console.error("[VoiceLoop] TTS chunk failed", e));
         }
 
-        // Flush remaining buffer as final TTS chunk
-        const tail = buffer.trim();
-        const { strippedText: tailStripped } = parseStageTags(tail);
-        if (tailStripped.trim()) ttsChunk(tailStripped, sentenceCounter++).catch((e) => console.error("[VoiceLoop] TTS chunk failed", e));
-
-        // Wait for all TTS chunks to land in the buffer, then signal end of stream
+        // Wait for all TTS chunks to land in the buffer, then signal end of stream.
         await ttsQueueRef.current;
         finishedChatRef.current = true;
         // Trigger updateend handler if buffer is currently idle
