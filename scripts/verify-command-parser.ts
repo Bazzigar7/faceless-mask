@@ -97,6 +97,33 @@ const FIXTURES: CommandFixture[] = [
     input: "masking tape is useful for posters",
     expected: { command: "none" },
   },
+  // HYPHEN NORMALIZATION
+  {
+    name: "show — 'mask pull-up evolution of web' (hyphenated verb)",
+    input: "mask pull-up evolution of web",
+    expected: { command: "show", query: "evolution of web" },
+  },
+  {
+    name: "clear — 'mask close-this' (hyphenated clear)",
+    input: "mask close-this",
+    expected: { command: "clear" },
+  },
+  // TRAILING PUNCTUATION STRIP
+  {
+    name: "clear — 'Mask, clear the stage.' (cap + comma + period)",
+    input: "Mask, clear the stage.",
+    expected: { command: "clear" },
+  },
+  {
+    name: "clear — 'Mask, close this.' (cap + comma + period)",
+    input: "Mask, close this.",
+    expected: { command: "clear" },
+  },
+  {
+    name: "show — 'mask pull up evolution of web.' (trailing period guard)",
+    input: "mask pull up evolution of web.",
+    expected: { command: "show", query: "evolution of web" },
+  },
 ];
 
 let passed = 0;

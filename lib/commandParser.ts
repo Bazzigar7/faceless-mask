@@ -22,7 +22,7 @@ const CLEAR_PHRASES = ["clear the stage", "clear that", "clear it", "close this"
 
 export function parseCommand(transcript: string): StageCommand {
   // 1. Normalize: lowercase, trim, collapse internal whitespace.
-  const s = transcript.toLowerCase().trim().replace(/\s+/g, " ");
+  const s = transcript.toLowerCase().trim().replace(/[-–—]/g, " ").replace(/\s+/g, " ");
 
   // 2. ADDRESS GATE: transcript must open with an address word.
   //    Check longest-first (see ADDRESS_WORDS note above).
@@ -39,6 +39,7 @@ export function parseCommand(transcript: string): StageCommand {
     if (after === "" || /^[\s.,!;:]/.test(after)) {
       // Strip leading punctuation char (if any) + whitespace from rest.
       rest = after.replace(/^[.,!;:]\s*/, "").replace(/^\s+/, "");
+      rest = rest.replace(/[.,!?;:]+$/, "").trim();
       addressed = true;
       break;
     }

@@ -6,6 +6,7 @@ import { useLipSync } from "@/lib/useLipSync";
 import { useCurrentWord, type WordState } from "@/lib/useCurrentWord";
 import { computeWordSegments } from "@/lib/wordSegments";
 import { parseStageTags, matchAssetByQuery } from "@/lib/visualCommands";
+import { parseCommand } from "@/lib/commandParser";
 import { startSilenceDetection } from "@/lib/silenceDetector";
 import { type Status } from "./StatusIndicator";
 import WakeWord from "./WakeWord";
@@ -22,18 +23,16 @@ export default function VoiceLoop({
   onStatusChange,
   onVisemeChange,
   onWordStateChange,
-  onMatchedAssetChange,
+  onStageChange,
   sessionId,
 }: {
   onStatusChange?: (status: Status) => void;
   onVisemeChange?: (viseme: Viseme) => void;
   onWordStateChange?: (state: WordState) => void;
-  onMatchedAssetChange?: (asset: Asset | null) => void;
+  onStageChange?: (asset: Asset | null) => void;
   sessionId?: string;
 } = {}) {
   const [status, setStatus] = useState<Status>("idle");
-  const [matchedAsset, setMatchedAsset] = useState<Asset | null>(null);
-
   const recorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
   // Phase 3.7 hands-free auto-stop: silence-detector teardown fn + ceiling
@@ -91,10 +90,6 @@ export default function VoiceLoop({
       });
     }
   }, [wordState, onWordStateChange]);
-
-  useEffect(() => {
-    onMatchedAssetChange?.(matchedAsset);
-  }, [matchedAsset, onMatchedAssetChange]);
 
   useEffect(() => {
     fetch("/api/assets")
@@ -284,6 +279,18 @@ export default function VoiceLoop({
           /* will start once buffer fills */
         });
 
+        // Deterministic stage ownership: parse the raw transcript and drive
+        // the stage directly, before Claude starts — for snappier, deterministic
+        // control. t still goes to Claude below (parallel, not bypass).
+        const cmd = parseCommand(t);
+        if (cmd.command === "show") {
+          const m = matchAssetByQuery(cmd.query, assetsRef.current);
+          // No match → leave current stage as-is; only an explicit clear clears.
+          if (m) onStageChange?.(m);
+        } else if (cmd.command === "clear") {
+          onStageChange?.(null);
+        }
+
         // 3. Chat: stream text, chunk into sentences, fire TTS sequentially
         const chatRes = await fetch("/api/chat", {
           method: "POST",
@@ -313,38 +320,14 @@ export default function VoiceLoop({
             const cut = m.index + m[0].length;
             const sentence = buffer.slice(0, cut).trim();
             buffer = buffer.slice(cut);
-            const { strippedText, events } = parseStageTags(sentence);
-            for (const event of events) {
-              switch (event.action) {
-                case "show": {
-                  const m = matchAssetByQuery(event.query, assetsRef.current);
-                  setMatchedAsset(m);
-                  break;
-                }
-                case "hide":
-                  setMatchedAsset(null);
-                  break;
-              }
-            }
+            const { strippedText } = parseStageTags(sentence);
             if (strippedText.trim()) ttsChunk(strippedText, sentenceCounter++).catch((e) => console.error("[VoiceLoop] TTS chunk failed", e));
           }
         }
 
         // Flush remaining buffer as final TTS chunk
         const tail = buffer.trim();
-        const { strippedText: tailStripped, events: tailEvents } = parseStageTags(tail);
-        for (const event of tailEvents) {
-          switch (event.action) {
-            case "show": {
-              const m = matchAssetByQuery(event.query, assetsRef.current);
-              setMatchedAsset(m);
-              break;
-            }
-            case "hide":
-              setMatchedAsset(null);
-              break;
-          }
-        }
+        const { strippedText: tailStripped } = parseStageTags(tail);
         if (tailStripped.trim()) ttsChunk(tailStripped, sentenceCounter++).catch((e) => console.error("[VoiceLoop] TTS chunk failed", e));
 
         // Wait for all TTS chunks to land in the buffer, then signal end of stream
