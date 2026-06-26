@@ -97,7 +97,7 @@ For what's architecturally where:
 - `lib/` — pure helpers, hooks, and the personality prompt. Includes the prompt-cache wiring (formatSessionContext, sessionContext), the alignment/viseme primitives (findActiveSentence, useLipSync, useCurrentWord, visemeMapping, wordSegments), Supabase client + types, the brief-bank parser system under lib/banks/, stage-command parsing (visualCommands.ts — parseStageTags + matchAssetByQuery; commandParser.ts — address-gated parseCommand), and asset helpers (createAsset.ts, listAssets.ts).
 - `docs/` — strategy, polish-backlog, curriculum-ideas. Read these to understand company context and what's pending.
 - `supabase/` — migrations (6 deployed: initial_schema, test_session_seed, turns_table, assets_tighten_and_seed, enable_rls_public_tables, assets_description_and_phrase).
-- `scripts/` — smoke tests, the env loader, and fixture harnesses: verify:visual (32 fixtures — parseStageTags + matchAssetByQuery), verify:commands (16 fixtures — parseCommand), verify:prompt (byte-lock).
+- `scripts/` — smoke tests, the env loader, and fixture harnesses: verify:visual (32 fixtures — parseStageTags + matchAssetByQuery), verify:commands (21 fixtures — parseCommand), verify:prompt (byte-lock).
 - `prompts/` — historical Claude Code prompts used to kick off each phase. Read-only archive.
 - `middleware.ts` — root-level Next.js middleware. Basic Auth gate on /admin and /api/admin only (Phase 3.1.2.1).
 
@@ -416,7 +416,7 @@ Shipped 2026-06-08 (flip commit 3a25927 + doc-sweep). TTS model swapped Multilin
   - [x] 3.3.3.2: parseStageTags + matchAssetByQuery wired into VoiceLoop streaming loop ✅ shipped 2026-05-20 (commit fd2d839)
 - [x] 3.3.4: Stage component + StageLayout + mode state machine ✅ shipped 2026-05-24 — 3-commit arc `5fb081f..497ef39` (framer-motion install + modeStateMachine + Stage live)
 - [x] 3.3.5: Stage emission unlock — <stage> contract reconciled in personality.ts + parser hardened ✅ shipped 2026-05-25 — 2-commit arc `03ef74c..7b218cf` (parser whitespace/case tolerance + personality emission contract + asset whitelist)
-- [x] 3.3.6: Idle timeout — Visual auto-exits to Solo after 10s idle ✅ shipped 2026-05-25 (commit 30fa2db)
+- [x] 3.3.6: Idle timeout — Visual auto-exits to Solo after 10s idle ✅ shipped 2026-05-25 (commit 30fa2db). *(10s `STAGE_IDLE_TIMEOUT_MS` timer removed in deterministic trigger commit 3 `1a7ee7f` 2026-06-26 — stage now persists until explicit voice-clear or replacing show.)*
 - [ ] 3.3.7: Replace placeholder assets with curated set (also re-sync the personality.ts asset whitelist to the new tags)
 
 ### Asset library CRUD ✅ (2026-06-24)
@@ -425,11 +425,15 @@ Shipped 2026-06-08 (flip commit 3a25927 + doc-sweep). TTS model swapped Multilin
 - [x] Asset admin UI — `app/admin/assets/` (list with preview, tags, exact phrases, description) + `app/admin/assets/new/` (upload form, phase labels, orphan-case message) — `2725541` + build fix `b29b4a8`
 - [x] Asset delete — `app/api/admin/assets/[id]` DELETE: file-first ordering (storage remove before row delete; partial failure leaves visible retryable row); `components/DeleteAssetButton.tsx` confirm + refresh — `ca65b75`
 
-### Deterministic voice trigger — IN PROGRESS (2026-06-24)
+### Deterministic voice trigger — commits 1–3 shipped 2026-06-26; commit 4 (cleanup) + grounded-explanation pending
 - [x] `matchAssetByQuery` exact_phrases tier — Tier 1 normalized equality check against `asset.exact_phrases` before Tier 2 fuzzy tag scoring; `normalizePhrase()` applied to both sides; verify:visual 28→32 fixtures — `e5eabd7`
 - [x] `parseCommand(transcript)` — address-gated deterministic classifier: ADDRESS_WORDS required at transcript start (anti-false-fire gate); accepts post-address punctuation (Whisper period/comma/etc); SHOW_VERBS strip + light article strip yields query; CLEAR_PHRASES; vocabulary in editable arrays; `lib/commandParser.ts`; verify:commands 16 fixtures incl. no-address negatives + word-boundary rejection — `b3ad066`
-- [ ] Wire `parseCommand` into VoiceLoop — intercept transcript after STT, before chat call; show → `matchAssetByQuery` → `setMatchedAsset`; clear → `setMatchedAsset(null)`; kill 10s auto-clear; none → fall through to Claude as today
-- [ ] Neuter Claude's `<stage>` emission in personality.ts once deterministic path is live
+- [x] `parseCommand` wired into VoiceLoop — intercepts transcript after STT, before chat call (parallel to Claude speech, not a bypass); show → `matchAssetByQuery` → `onStageChange`; clear → `onStageChange(null)`; none → falls through to Claude unchanged. Dual `matchedAsset` state collapsed: VoiceLoop's local copy removed, `page.tsx` is single source of truth via `onStageChange` callback. 10s `STAGE_IDLE_TIMEOUT_MS` auto-clear removed — stage persists until explicit voice-clear or replacing show. `parseStageTags` still strips `<stage>` from spoken/subtitle text (safety net until personality.ts emission is neutered). Normalization added to `parseCommand`: hyphen/dash→space (Whisper emits "pull-up" for "pull up") + trailing terminal-punctuation strip (Whisper emits "Mask, clear the stage." with period); `verify:commands` 16→21 fixtures — `1a7ee7f`
+- [ ] Neuter `<stage>` emission in `personality.ts` — downgraded to pure cleanup (parser is already sole stage owner; `parseStageTags` strips any leaked tag from TTS/subtitles as safety net)
+
+**Banked (vocabulary-robustness slice):** wrong-script Whisper transcription of code-mix speech, misheard words, rephrasing outside fixed verb/phrase lists. Operational gotcha until this slice lands: spoken phrase must match tagged `exact_phrases`; tag assets generously.
+
+**Next priority:** grounded-explanation — feed the on-stage asset's `description` field into Claude's context so Mask can speak to what's on screen without generic improvisation.
 
 **Hard constraints during Phase 3.3** (relax after 3.3 ships):
 - `lib/personality.ts` — locked (controls voice-loop output)
@@ -438,7 +442,7 @@ Shipped 2026-06-08 (flip commit 3a25927 + doc-sweep). TTS model swapped Multilin
 - `lib/useLipSync.ts`, `lib/visemeMapping.ts`, `lib/findActiveSentence.ts` — locked (lip sync runtime)
 - `lib/supabaseAdmin.ts`, `lib/supabase.ts` — locked (Supabase security model finalized 2026-05-20; service-role bypass + anon client, do not touch)
 - `components/Mask.tsx`, `components/Subtitles.tsx`, `components/Starfield.tsx`, `components/StatusIndicator.tsx` — locked (voice-loop render components; Mode 2 layout shifts happen via parent-supplied className/wrapper, never by editing these)
-- `components/VoiceLoop.tsx` — additive only (new state + client parser; no removal of existing state or props)
+- `components/VoiceLoop.tsx` — additive-only gate CLOSED by deterministic trigger commit 3 (`1a7ee7f`); returns to normal review-and-edit cadence
 
 After Phase 3.3 closes, these files return to normal review-and-edit cadence; the lockout is specifically for the hackathon-judging window plus the duration of the Phase 3.3 substeps.
 
