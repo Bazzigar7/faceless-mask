@@ -1,5 +1,5 @@
-// Verifies parseCommand() in lib/commandParser.ts across 16 fixtures
-// (show, clear, negative, normalization, robustness branches).
+// Verifies parseCommand() in lib/commandParser.ts across 27 fixtures
+// (show, clear, explain, negative, normalization, robustness branches).
 // Run via: npm run verify:commands
 // Exits 0 when all fixtures pass, 1 on any failure with per-fixture report.
 
@@ -17,22 +17,22 @@ const FIXTURES: CommandFixture[] = [
   {
     name: "show — 'mask pull up the btc image'",
     input: "mask pull up the btc image",
-    expected: { command: "show", query: "btc image" },
+    expected: { command: "show", query: "btc image", explain: false },
   },
   {
     name: "show — 'hey mask show them the pizza day' (long address + verb + article strip)",
     input: "hey mask show them the pizza day",
-    expected: { command: "show", query: "pizza day" },
+    expected: { command: "show", query: "pizza day", explain: false },
   },
   {
     name: "show — 'mask display evolution of web'",
     input: "mask display evolution of web",
-    expected: { command: "show", query: "evolution of web" },
+    expected: { command: "show", query: "evolution of web", explain: false },
   },
   {
-    name: "show (compound) — 'and explain' tail left in query unchanged",
+    name: "show (compound) — explain tail stripped from query, explain:true",
     input: "mask pull up the web123 evolution image and explain",
-    expected: { command: "show", query: "web123 evolution image and explain" },
+    expected: { command: "show", query: "web123 evolution image", explain: true },
   },
   // CLEAR
   {
@@ -80,7 +80,7 @@ const FIXTURES: CommandFixture[] = [
   {
     name: "normalization — mixed case, extra spaces, leading comma after address",
     input: "  Mask,  Pull Up   the BTC Image  ",
-    expected: { command: "show", query: "btc image" },
+    expected: { command: "show", query: "btc image", explain: false },
   },
   {
     name: "normalization — 'hey mask' address-only, longest address word, no instruction",
@@ -90,7 +90,7 @@ const FIXTURES: CommandFixture[] = [
   {
     name: "robustness — Whisper period after address ('mask. pull up the btc image')",
     input: "mask. pull up the btc image",
-    expected: { command: "show", query: "btc image" },
+    expected: { command: "show", query: "btc image", explain: false },
   },
   {
     name: "none — word starting with 'mask' is not an address ('masking tape...')",
@@ -101,7 +101,7 @@ const FIXTURES: CommandFixture[] = [
   {
     name: "show — 'mask pull-up evolution of web' (hyphenated verb)",
     input: "mask pull-up evolution of web",
-    expected: { command: "show", query: "evolution of web" },
+    expected: { command: "show", query: "evolution of web", explain: false },
   },
   {
     name: "clear — 'mask close-this' (hyphenated clear)",
@@ -122,7 +122,38 @@ const FIXTURES: CommandFixture[] = [
   {
     name: "show — 'mask pull up evolution of web.' (trailing period guard)",
     input: "mask pull up evolution of web.",
-    expected: { command: "show", query: "evolution of web" },
+    expected: { command: "show", query: "evolution of web", explain: false },
+  },
+  // EXPLAIN — compound show + bare explain
+  {
+    name: "show+explain (compound) — 'and explain it' tail stripped",
+    input: "mask pull up evolution of web and explain it",
+    expected: { command: "show", query: "evolution of web", explain: true },
+  },
+  {
+    name: "show only — explain:false when no explain tail",
+    input: "mask pull up evolution of web",
+    expected: { command: "show", query: "evolution of web", explain: false },
+  },
+  {
+    name: "explain (bare) — 'mask explain this'",
+    input: "mask explain this",
+    expected: { command: "explain" },
+  },
+  {
+    name: "none (bare explain, no address) — 'explain this'",
+    input: "explain this",
+    expected: { command: "none" },
+  },
+  {
+    name: "show+explain (compound) — ', tell me about it' tail stripped",
+    input: "mask show evolution of web, tell me about it",
+    expected: { command: "show", query: "evolution of web", explain: true },
+  },
+  {
+    name: "clear (regression guard — show overhaul) — 'mask clear the stage'",
+    input: "mask clear the stage",
+    expected: { command: "clear" },
   },
 ];
 

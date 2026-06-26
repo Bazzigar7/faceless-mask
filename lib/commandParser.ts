@@ -7,7 +7,8 @@
 // discovers his natural speech patterns; each addition is a one-line edit.
 
 export type StageCommand =
-  | { command: "show"; query: string }
+  | { command: "show"; query: string; explain: boolean }
+  | { command: "explain" }
   | { command: "clear" }
   | { command: "none" };
 
@@ -19,6 +20,45 @@ const ADDRESS_WORDS = ["hey mask", "ok mask", "mask"];
 const SHOW_VERBS = ["pull up", "show them", "show", "display", "play", "let's see"];
 
 const CLEAR_PHRASES = ["clear the stage", "clear that", "clear it", "close this"];
+
+// Trailing explain clauses stripped from show queries (longest-first so longer
+// phrases match before their substrings).
+const EXPLAIN_TAILS = [
+  ", tell them about it",
+  " tell them about it",
+  ", tell me about it",
+  " tell me about it",
+  ", tell them about",
+  " tell them about",
+  ", tell me about",
+  " tell me about",
+  " and explain this",
+  " and explain that",
+  " and explain it",
+  " walk us through",
+  " walk me through",
+  " break it down",
+  " what is this",
+  " what's this",
+  " and explain",
+];
+
+// Bare explain phrases — addressed, no show verb, self-referential (longest-first).
+const BARE_EXPLAIN_PHRASES = [
+  "tell me about this",
+  "tell them about this",
+  "walk us through this",
+  "walk me through this",
+  "tell me about that",
+  "tell them about that",
+  "explain this",
+  "explain that",
+  "explain it",
+  "what is this",
+  "what's this",
+  "break it down",
+  "explain",
+];
 
 export function parseCommand(transcript: string): StageCommand {
   // 1. Normalize: lowercase, trim, collapse internal whitespace.
@@ -74,11 +114,30 @@ export function parseCommand(transcript: string): StageCommand {
       // Empty query (e.g. "mask pull up" with nothing after) → no-op.
       if (query.length === 0) return { command: "none" };
 
-      return { command: "show", query };
+      // Detect and strip trailing explain clause (longest-first).
+      let explain = false;
+      for (const tail of EXPLAIN_TAILS) {
+        if (query.endsWith(tail)) {
+          query = query.slice(0, query.length - tail.length).trim();
+          explain = true;
+          break;
+        }
+      }
+
+      // After stripping the explain tail, query could be empty.
+      if (query.length === 0) return { command: "none" };
+
+      return { command: "show", query, explain };
     }
   }
 
-  // 6. Addressed Mask but no show/clear verb — e.g. "mask what's web3".
-  //    Not a stage command; flows to Claude as normal speech.
+  // 6. BARE EXPLAIN CHECK: addressed, no show/clear verb, self-referential.
+  for (const phrase of BARE_EXPLAIN_PHRASES) {
+    if (rest === phrase || rest.startsWith(phrase + " ")) {
+      return { command: "explain" };
+    }
+  }
+
+  // 7. Addressed Mask but no show/clear/explain verb — flows to Claude.
   return { command: "none" };
 }
