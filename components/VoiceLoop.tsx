@@ -319,10 +319,14 @@ export default function VoiceLoop({
           ttsChunk(cannedAck, 0).catch((e) => console.error("[VoiceLoop] TTS chunk failed", e));
         } else {
           // 4. Chat: stream text, chunk into sentences, fire TTS sequentially.
+          const assetDescription =
+            cmd.command === "explain"
+              ? (stagedAssetRef.current?.description ?? undefined)
+              : (staged?.description ?? undefined);
           const chatRes = await fetch("/api/chat", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ transcript: t, sessionId }),
+            body: JSON.stringify({ transcript: t, sessionId, assetDescription }),
             signal: ac.signal,
           });
           if (!chatRes.ok || !chatRes.body) throw new Error(`Chat failed: ${chatRes.status}`);

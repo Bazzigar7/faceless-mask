@@ -59,7 +59,7 @@ async function loadRecentTurnsSafe(
 }
 
 export async function POST(req: NextRequest) {
-  const { transcript, sessionId } = (await req.json()) as { transcript: string; sessionId?: string };
+  const { transcript, sessionId, assetDescription } = (await req.json()) as { transcript: string; sessionId?: string; assetDescription?: string };
   if (!transcript || !transcript.trim()) {
     return NextResponse.json({ error: "transcript required" }, { status: 400 });
   }
@@ -109,7 +109,15 @@ export async function POST(req: NextRequest) {
     model: "claude-sonnet-4-6",
     max_tokens: 1024,
     system: systemBlocks,
-    messages: [...history, { role: "user", content: transcript }],
+    messages: [
+      ...history,
+      {
+        role: "user",
+        content: assetDescription
+          ? `[On screen for the class right now: ${assetDescription}]\n\n${transcript}`
+          : transcript,
+      },
+    ],
   });
 
   // Flipped true on the first text_delta forwarded to the browser
