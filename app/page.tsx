@@ -29,6 +29,11 @@ export default function Page() {
   });
   const [subtitleVisible, setSubtitleVisible] = useState(false);
   const [matchedAsset, setMatchedAsset] = useState<Asset | null>(null);
+  const [paused, setPaused] = useState(false);
+
+  const togglePaused = () => setPaused((p) => !p);
+
+  useEffect(() => { setPaused(false); }, [matchedAsset?.id]);
 
   useEffect(() => {
     if (status === "speaking") {
@@ -48,13 +53,22 @@ export default function Page() {
       <div className="absolute inset-0 z-0">
         <Starfield />
       </div>
-      <StageLayout viseme={viseme} matchedAsset={matchedAsset} mode={mode} />
+      <StageLayout viseme={viseme} matchedAsset={matchedAsset} mode={mode} paused={paused} onEnded={() => setPaused(true)} />
       <Subtitles
         sentence={wordState.sentence}
         activeWordIndex={wordState.activeWordIndex}
         visible={subtitleVisible}
       />
       <StatusIndicator status={status} className="fixed top-6 right-6 z-20" />
+      {matchedAsset?.type === "video" && (
+        <button
+          type="button"
+          onClick={togglePaused}
+          className="fixed bottom-6 left-8 z-20 select-none rounded-full bg-black/40 px-6 py-2.5 text-sm font-medium text-white shadow-lg backdrop-blur-sm transition hover:bg-black/55 active:scale-95"
+        >
+          {paused ? "Resume" : "Pause"}
+        </button>
+      )}
       <Suspense>
         <VoiceLoopWithSession
           onStatusChange={setStatus}

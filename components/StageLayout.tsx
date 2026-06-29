@@ -10,9 +10,11 @@ interface Props {
   viseme: Viseme;
   matchedAsset: Asset | null;
   mode: Mode;
+  paused?: boolean;
+  onEnded?: () => void;
 }
 
-export default function StageLayout({ viseme, matchedAsset, mode }: Props) {
+export default function StageLayout({ viseme, matchedAsset, mode, paused, onEnded }: Props) {
   return (
     <>
       <motion.div
@@ -52,7 +54,7 @@ export default function StageLayout({ viseme, matchedAsset, mode }: Props) {
             exit={{ opacity: 0 }}
             transition={{ duration: 0.3 }}
           >
-            <Stage asset={matchedAsset} />
+            <Stage asset={matchedAsset} paused={paused} onEnded={onEnded} />
           </motion.div>
         )}
       </AnimatePresence>

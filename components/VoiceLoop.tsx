@@ -550,7 +550,7 @@ export default function VoiceLoop({
   const buttonLabel = isStopMode ? "Stop" : "Hold to speak";
 
   return (
-    <div className="fixed inset-x-0 bottom-0 z-20 flex flex-col-reverse items-center gap-3 px-4 pb-20">
+    <div className="fixed inset-x-0 bottom-0 z-20 flex flex-col-reverse items-center gap-3 px-4 pb-20 pointer-events-none">
       {/*
         Phase 3.5 TEMPORARY trigger — button doubles as Stop during
         "speaking" so we can interrupt Mask mid-speech. Real trigger
@@ -575,12 +575,14 @@ export default function VoiceLoop({
           e.preventDefault();
           if (!isStopMode) stopRecording();
         }}
-        className="select-none rounded-full bg-black/40 px-6 py-2.5 text-sm font-medium text-white shadow-lg backdrop-blur-sm transition hover:bg-black/55 active:scale-95 disabled:cursor-not-allowed disabled:opacity-50"
+        className="select-none rounded-full bg-black/40 px-6 py-2.5 text-sm font-medium text-white shadow-lg backdrop-blur-sm transition hover:bg-black/55 active:scale-95 disabled:cursor-not-allowed disabled:opacity-50 pointer-events-auto"
       >
         {buttonLabel}
       </button>
 
-      <WakeWord status={status} onWake={() => startRecording(true)} />
+      <div className="pointer-events-auto">
+        <WakeWord status={status} onWake={() => startRecording(true)} />
+      </div>
 
       <audio ref={audioRef} autoPlay />
     </div>
