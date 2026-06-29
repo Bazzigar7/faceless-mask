@@ -12,9 +12,9 @@ export default function Stage({ asset }: Props) {
     return (
       <video
         src={asset.url}
-        muted
         autoPlay
         loop
+        playsInline
         className="h-full w-full object-contain"
       />
     );
